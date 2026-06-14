@@ -41,7 +41,7 @@ def create_access_token(
     }
     if extra_claims:
         claims.update(extra_claims)
-    return jwt.encode(claims, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    return str(jwt.encode(claims, settings.jwt_secret, algorithm=settings.jwt_algorithm))
 
 
 def create_refresh_token(subject: str) -> str:
@@ -55,7 +55,7 @@ def create_refresh_token(subject: str) -> str:
         "jti": str(uuid.uuid4()),
         "type": "refresh",
     }
-    return jwt.encode(claims, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    return str(jwt.encode(claims, settings.jwt_secret, algorithm=settings.jwt_algorithm))
 
 
 def decode_token(token: str) -> dict[str, Any]:

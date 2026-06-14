@@ -4,6 +4,8 @@ Tests for backend.shared.schemas.responses — API response schemas.
 
 from __future__ import annotations
 
+from typing import Any
+
 from backend.shared.schemas.responses import ErrorResponse, HealthStatus, SuccessResponse
 
 
@@ -18,7 +20,7 @@ class TestSuccessResponse:
 
     def test_success_response_with_data(self) -> None:
         data = {"user_id": "123", "email": "test@example.com"}
-        resp = SuccessResponse[dict](data=data, message="User retrieved")
+        resp = SuccessResponse[dict[str, Any]](data=data, message="User retrieved")
         assert resp.success is True
         assert resp.data == data
 

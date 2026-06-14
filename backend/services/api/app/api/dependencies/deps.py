@@ -21,6 +21,6 @@ from backend.shared.middleware.rbac import get_current_user
 # --- Type-aliased dependencies for cleaner route signatures ----------------
 
 DBSession = Annotated[AsyncSession, Depends(get_db_session)]
-RedisClient = Annotated[Redis, Depends(get_redis)]  # type: ignore[type-arg]
+RedisClient = Annotated[Redis, Depends(get_redis)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
 CurrentUser = Annotated[dict[str, Any], Depends(get_current_user)]

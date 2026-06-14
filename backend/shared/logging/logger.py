@@ -14,7 +14,8 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import Any
+from collections.abc import MutableMapping
+from typing import Any, cast
 
 import structlog
 
@@ -36,8 +37,8 @@ _SENSITIVE_KEYS = frozenset(
 
 
 def _filter_sensitive_data(
-    _logger: Any, _method: str, event_dict: dict[str, Any]
-) -> dict[str, Any]:
+    _logger: Any, _method: str, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
     """Redact values for sensitive keys."""
     for key in list(event_dict.keys()):
         if key.lower() in _SENSITIVE_KEYS:
@@ -45,7 +46,9 @@ def _filter_sensitive_data(
     return event_dict
 
 
-def _inject_request_id(_logger: Any, _method: str, event_dict: dict[str, Any]) -> dict[str, Any]:
+def _inject_request_id(
+    _logger: Any, _method: str, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
     """Inject the current request ID from the context var."""
     req_id = request_id_ctx.get("")
     if req_id:
@@ -53,7 +56,9 @@ def _inject_request_id(_logger: Any, _method: str, event_dict: dict[str, Any]) -
     return event_dict
 
 
-def _inject_service_name(_logger: Any, _method: str, event_dict: dict[str, Any]) -> dict[str, Any]:
+def _inject_service_name(
+    _logger: Any, _method: str, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
     """Inject the service name from settings (or default)."""
     event_dict.setdefault("service_name", "airlynk")
     return event_dict
@@ -65,7 +70,9 @@ def setup_logging(log_level: str = "INFO", service_name: str = "airlynk") -> Non
     Call once during application startup — before any other module logs.
     """
 
-    def _add_service(_logger: Any, _method: str, event_dict: dict[str, Any]) -> dict[str, Any]:
+    def _add_service(
+        _logger: Any, _method: str, event_dict: MutableMapping[str, Any]
+    ) -> MutableMapping[str, Any]:
         event_dict.setdefault("service_name", service_name)
         return event_dict
 
@@ -115,4 +122,4 @@ def setup_logging(log_level: str = "INFO", service_name: str = "airlynk") -> Non
 
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
     """Return a structlog bound logger for the given module name."""
-    return structlog.get_logger(name)
+    return cast("structlog.stdlib.BoundLogger", structlog.get_logger(name))

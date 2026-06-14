@@ -7,6 +7,7 @@ mocking the infrastructure dependencies that aren't available in CI.
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -14,7 +15,7 @@ from httpx import ASGITransport, AsyncClient
 
 
 @pytest.fixture
-async def client() -> AsyncClient:
+async def client() -> AsyncGenerator[AsyncClient, None]:
     """Create an async test client with mocked infrastructure."""
     # Mock all infrastructure init/close to avoid requiring real services
     with (

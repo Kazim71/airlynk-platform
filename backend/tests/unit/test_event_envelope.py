@@ -66,12 +66,12 @@ class TestEventNameConstants:
             assert len(parts) >= 3, f"Event '{event}' doesn't follow service.domain.action format"
 
     def test_auth_events_exist(self) -> None:
-        assert EventName.AUTH_USER_REGISTERED == "auth.user.registered"
-        assert EventName.AUTH_USER_LOGIN_SUCCESS == "auth.user.login_success"
-        assert EventName.AUTH_USER_LOGIN_FAILED == "auth.user.login_failed"
-        assert EventName.AUTH_TOKEN_REFRESHED == "auth.token.refreshed"
+        assert EventName.AUTH_USER_REGISTERED.value == "auth.user.registered"
+        assert EventName.AUTH_USER_LOGIN_SUCCESS.value == "auth.user.login_success"
+        assert EventName.AUTH_USER_LOGIN_FAILED.value == "auth.user.login_failed"
+        assert EventName.AUTH_TOKEN_REFRESHED.value == "auth.token.refreshed"
 
     def test_booking_events_exist(self) -> None:
-        assert EventName.BOOKING_TRIP_CREATED == "booking.trip.created"
-        assert EventName.BOOKING_TRIP_ASSIGNED == "booking.trip.assigned"
-        assert EventName.BOOKING_TRIP_COMPLETED == "booking.trip.completed"
+        assert EventName.BOOKING_TRIP_CREATED.value == "booking.trip.created"
+        assert EventName.BOOKING_TRIP_ASSIGNED.value == "booking.trip.assigned"
+        assert EventName.BOOKING_TRIP_COMPLETED.value == "booking.trip.completed"

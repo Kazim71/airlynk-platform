@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 _RETRY_DELAYS = [5, 30, 120]
 
 
-@celery_app.task(
+@celery_app.task(  # type: ignore[untyped-decorator]
     bind=True,
     name="airlynk.process_event",
     max_retries=3,
@@ -64,7 +64,7 @@ def process_event(self: Any, event_payload: dict[str, Any]) -> dict[str, str]:
         raise self.retry(exc=exc, countdown=delay) from exc
 
 
-@celery_app.task(
+@celery_app.task(  # type: ignore[untyped-decorator]
     bind=True,
     name="airlynk.send_notification_email",
     max_retries=3,

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import AsyncGenerator
+from typing import Any
 
 from redis.asyncio import ConnectionPool, Redis
 
@@ -16,7 +17,7 @@ from backend.shared.config.settings import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
-_pool: ConnectionPool | None = None
+_pool: ConnectionPool[Any] | None = None
 _client: Redis | None = None  # type: ignore[type-arg]
 
 
@@ -37,7 +38,7 @@ async def close_redis() -> None:
     """Tear down the pool — called during shutdown."""
     global _pool, _client
     if _client is not None:
-        await _client.aclose()
+        await _client.close()
     if _pool is not None:
         await _pool.disconnect()
     _client = None

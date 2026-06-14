@@ -89,7 +89,7 @@ def setup_tracing(app: FastAPI | None = None, settings: Settings | None = None) 
     try:
         from opentelemetry.instrumentation.celery import CeleryInstrumentor
 
-        CeleryInstrumentor().instrument()
+        CeleryInstrumentor().instrument()  # type: ignore[no-untyped-call]
     except Exception:
         logger.debug("Celery instrumentation skipped")
 
@@ -100,4 +100,4 @@ def shutdown_tracing() -> None:
     """Flush and shut down the tracer provider."""
     provider = trace.get_tracer_provider()
     if hasattr(provider, "shutdown"):
-        provider.shutdown()  # type: ignore[union-attr]
+        provider.shutdown()
