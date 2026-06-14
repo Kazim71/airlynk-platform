@@ -1,0 +1,1 @@
+"""AirLynk Celery worker service."""

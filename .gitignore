@@ -1,0 +1,68 @@
+# ============================================================
+# AirLynk .gitignore
+# ============================================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# --- Virtual Environments ---
+.venv/
+venv/
+env/
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Environment & Secrets ---
+.env
+.env.*
+!.env.example
+
+# --- mypy ---
+.mypy_cache/
+
+# --- pytest ---
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# --- Ruff ---
+.ruff_cache/
+
+# --- Docker ---
+*.log
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Alembic ---
+backend/alembic/versions/*.pyc
+
+# --- Terraform ---
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+
+# --- Node (CI tooling) ---
+node_modules/
+
+# --- Misc ---
+*.bak
+*.tmp

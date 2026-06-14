@@ -1,0 +1,49 @@
+# ============================================================
+# AirLynk Celery Worker — Multi-stage Dockerfile
+# ============================================================
+# Shares the same build pattern as the API Dockerfile but runs
+# the Celery worker process instead of Uvicorn.
+# ============================================================
+
+# ---------------------------------------------------------------------------
+# Stage 1 — Dependency installation
+# ---------------------------------------------------------------------------
+FROM python:3.12-slim AS builder
+
+WORKDIR /build
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gcc libpq-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml ./
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir --prefix=/install .
+
+# ---------------------------------------------------------------------------
+# Stage 2 — Minimal runtime image
+# ---------------------------------------------------------------------------
+FROM python:3.12-slim AS runtime
+
+LABEL maintainer="AirLynk Engineering"
+LABEL description="AirLynk Celery Worker"
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libpq5 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Non-root user
+RUN groupadd --gid 1000 appuser && \
+    useradd --uid 1000 --gid appuser --shell /bin/bash --create-home appuser
+
+COPY --from=builder /install /usr/local
+
+WORKDIR /app
+COPY backend/ ./backend/
+
+RUN chown -R appuser:appuser /app
+USER appuser
+
+# Celery worker entrypoint
+CMD ["celery", "-A", "backend.services.worker.celery_app", "worker", \
+     "--loglevel=info", "--concurrency=4", "-Q", "airlynk.default"]

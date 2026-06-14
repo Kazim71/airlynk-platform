@@ -1,0 +1,161 @@
+[build-system]
+requires = ["setuptools>=75.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["backend*"]
+
+[project]
+name = "airlynk"
+version = "0.1.0"
+description = "AirLynk — Cloud-native secure backend platform"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [{name = "AirLynk Engineering"}]
+
+dependencies = [
+    # --- Web Framework ---
+    "fastapi>=0.115.0,<1.0.0",
+    "uvicorn[standard]>=0.32.0,<1.0.0",
+
+    # --- Database ---
+    "sqlalchemy[asyncio]>=2.0.36,<3.0.0",
+    "asyncpg>=0.30.0,<1.0.0",
+    "alembic>=1.14.0,<2.0.0",
+
+    # --- Cache ---
+    "redis[hiredis]>=5.2.0,<6.0.0",
+
+    # --- Messaging ---
+    "aio-pika>=9.5.0,<10.0.0",
+
+    # --- Task Queue ---
+    "celery[redis]>=5.4.0,<6.0.0",
+
+    # --- Validation & Config ---
+    "pydantic>=2.10.0,<3.0.0",
+    "pydantic-settings>=2.7.0,<3.0.0",
+
+    # --- Security ---
+    "python-jose[cryptography]>=3.3.0,<4.0.0",
+    "passlib[argon2]>=1.7.4,<2.0.0",
+    "argon2-cffi>=23.1.0,<24.0.0",
+    "pyotp>=2.9.0,<3.0.0",
+
+    # --- Logging ---
+    "structlog>=24.4.0,<25.0.0",
+
+    # --- Observability ---
+    "opentelemetry-api>=1.29.0,<2.0.0",
+    "opentelemetry-sdk>=1.29.0,<2.0.0",
+    "opentelemetry-instrumentation-fastapi>=0.50b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.50b0",
+    "opentelemetry-instrumentation-redis>=0.50b0",
+    "opentelemetry-instrumentation-celery>=0.50b0",
+    "opentelemetry-exporter-otlp>=1.29.0,<2.0.0",
+    "prometheus-client>=0.21.0,<1.0.0",
+
+    # --- HTTP Client ---
+    "httpx>=0.28.0,<1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0,<9.0.0",
+    "pytest-asyncio>=0.24.0,<1.0.0",
+    "pytest-cov>=6.0.0,<7.0.0",
+    "httpx>=0.28.0,<1.0.0",
+    "ruff>=0.8.0,<1.0.0",
+    "black>=24.10.0,<25.0.0",
+    "mypy>=1.13.0,<2.0.0",
+    "bandit>=1.8.0,<2.0.0",
+    "safety>=3.2.0,<4.0.0",
+    "types-redis>=4.6.0",
+    "types-passlib>=1.7.7",
+]
+
+# ---------------------------------------------------------------------------
+# Tool Configuration
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+target-version = "py312"
+line-length = 99
+src = ["backend"]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "S",     # flake8-bandit
+    "T20",   # flake8-print (forbid print statements)
+    "SIM",   # flake8-simplify
+    "TCH",   # flake8-type-checking
+    "RUF",   # Ruff-specific rules
+]
+ignore = [
+    "S101",  # allow assert in tests
+    "S105",  # false positive: event name strings like "auth.token.refreshed"
+    "B008",  # allow Depends() in function args
+    "TCH002", # don't move runtime imports to TYPE_CHECKING blocks
+    "TCH003", # don't move stdlib runtime imports to TYPE_CHECKING blocks
+    "UP046",  # Generic[T] subclass still needed for Pydantic BaseModel
+]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/tests/**/*.py" = ["S101", "S106"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["backend"]
+
+[tool.black]
+target-version = ["py312"]
+line-length = 99
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "celery.*",
+    "aio_pika.*",
+    "prometheus_client.*",
+    "opentelemetry.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests requiring infrastructure",
+    "api: API-level tests",
+]
+
+[tool.bandit]
+exclude_dirs = ["backend/tests"]
+skips = ["B101"]
+
+[tool.coverage.run]
+source = ["backend"]
+omit = ["backend/tests/*", "backend/alembic/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true

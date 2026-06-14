@@ -1,0 +1,211 @@
+# ============================================================
+# AirLynk — Docker Compose (Local Development)
+# ============================================================
+# Services from INFRASTRUCTURE.md §2:
+#   nginx, api, postgres, redis, rabbitmq,
+#   celery-worker, prometheus, grafana, loki
+#
+# Network:  airlynk-network  (DOCKER_STRATEGY.md §5)
+# Volumes:  postgres-data, rabbitmq-data, grafana-data
+# ============================================================
+
+services:
+  # -----------------------------------------------------------------
+  # Reverse Proxy
+  # -----------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: airlynk-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - airlynk-network
+    restart: unless-stopped
+
+  # -----------------------------------------------------------------
+  # API Service
+  # -----------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: airlynk-api
+    env_file:
+      - .env.development
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - airlynk-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+  # -----------------------------------------------------------------
+  # PostgreSQL 16
+  # -----------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: airlynk-postgres
+    env_file:
+      - .env.development
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airlynk -d airlynk"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - airlynk-network
+    restart: unless-stopped
+
+  # -----------------------------------------------------------------
+  # Redis 7
+  # -----------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: airlynk-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - airlynk-network
+    restart: unless-stopped
+
+  # -----------------------------------------------------------------
+  # RabbitMQ
+  # -----------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: airlynk-rabbitmq
+    env_file:
+      - .env.development
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - airlynk-network
+    restart: unless-stopped
+
+  # -----------------------------------------------------------------
+  # Celery Worker
+  # -----------------------------------------------------------------
+  celery-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.worker
+    container_name: airlynk-celery-worker
+    env_file:
+      - .env.development
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - airlynk-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  # -----------------------------------------------------------------
+  # Prometheus
+  # -----------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: airlynk-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - airlynk-network
+    restart: unless-stopped
+
+  # -----------------------------------------------------------------
+  # Grafana
+  # -----------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: airlynk-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - airlynk-network
+    restart: unless-stopped
+
+  # -----------------------------------------------------------------
+  # Loki
+  # -----------------------------------------------------------------
+  loki:
+    image: grafana/loki:3.2.1
+    container_name: airlynk-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+    networks:
+      - airlynk-network
+    restart: unless-stopped
+
+# -----------------------------------------------------------------
+# Volumes  (DOCKER_STRATEGY.md §6)
+# -----------------------------------------------------------------
+volumes:
+  postgres-data:
+    driver: local
+  rabbitmq-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+# -----------------------------------------------------------------
+# Network  (DOCKER_STRATEGY.md §5)
+# -----------------------------------------------------------------
+networks:
+  airlynk-network:
+    driver: bridge
+    name: airlynk-network

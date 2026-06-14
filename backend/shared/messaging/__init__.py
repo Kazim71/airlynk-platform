@@ -1,0 +1,1 @@
+"""Async RabbitMQ messaging infrastructure."""
