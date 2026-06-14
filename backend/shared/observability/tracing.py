@@ -49,21 +49,28 @@ def setup_tracing(app: FastAPI | None = None, settings: Settings | None = None) 
     provider = TracerProvider(resource=resource)
 
     # OTLP exporter — sends to a collector (Jaeger, Tempo, etc.)
-    otlp_exporter = OTLPSpanExporter(
-        endpoint=settings.otel_exporter_otlp_endpoint,
-        insecure=settings.is_development,
-    )
-    provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+    if settings.otel_enabled:
+        try:
+            otlp_exporter = OTLPSpanExporter(
+                endpoint=settings.otel_exporter_otlp_endpoint,
+                insecure=settings.is_development,
+            )
+            provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+        except Exception as e:
+            logger.warning("Failed to initialize OTLP exporter", exc_info=e)
 
-    # Console exporter for dev visibility
-    if settings.is_development:
-        provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+        # Console exporter for dev visibility
+        if settings.is_development:
+            provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
 
     trace.set_tracer_provider(provider)
 
     # --- Auto-instrument libraries -------------------------------------------
     if app is not None:
-        FastAPIInstrumentor.instrument_app(app)
+        try:
+            FastAPIInstrumentor.instrument_app(app)
+        except Exception as e:
+            logger.warning("FastAPI instrumentation skipped", exc_info=e)
 
     try:
         from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor

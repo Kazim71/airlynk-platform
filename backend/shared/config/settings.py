@@ -83,6 +83,7 @@ class Settings(BaseSettings):
     smtp_from_email: str = Field(default="noreply@airlynk.dev")
 
     # --- OpenTelemetry ---------------------------------------------------------
+    otel_enabled: bool = Field(default=False)
     otel_exporter_otlp_endpoint: str = Field(default="http://localhost:4317")
     otel_service_name: str = Field(default="airlynk-api")
 
