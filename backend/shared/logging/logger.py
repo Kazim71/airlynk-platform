@@ -21,16 +21,18 @@ import structlog
 from backend.shared.middleware.correlation import request_id_ctx
 
 # Fields that must never appear in log output
-_SENSITIVE_KEYS = frozenset({
-    "password",
-    "secret",
-    "token",
-    "refresh_token",
-    "access_token",
-    "jwt",
-    "authorization",
-    "cookie",
-})
+_SENSITIVE_KEYS = frozenset(
+    {
+        "password",
+        "secret",
+        "token",
+        "refresh_token",
+        "access_token",
+        "jwt",
+        "authorization",
+        "cookie",
+    }
+)
 
 
 def _filter_sensitive_data(
@@ -43,9 +45,7 @@ def _filter_sensitive_data(
     return event_dict
 
 
-def _inject_request_id(
-    _logger: Any, _method: str, event_dict: dict[str, Any]
-) -> dict[str, Any]:
+def _inject_request_id(_logger: Any, _method: str, event_dict: dict[str, Any]) -> dict[str, Any]:
     """Inject the current request ID from the context var."""
     req_id = request_id_ctx.get("")
     if req_id:
@@ -53,9 +53,7 @@ def _inject_request_id(
     return event_dict
 
 
-def _inject_service_name(
-    _logger: Any, _method: str, event_dict: dict[str, Any]
-) -> dict[str, Any]:
+def _inject_service_name(_logger: Any, _method: str, event_dict: dict[str, Any]) -> dict[str, Any]:
     """Inject the service name from settings (or default)."""
     event_dict.setdefault("service_name", "airlynk")
     return event_dict
@@ -67,9 +65,7 @@ def setup_logging(log_level: str = "INFO", service_name: str = "airlynk") -> Non
     Call once during application startup — before any other module logs.
     """
 
-    def _add_service(
-        _logger: Any, _method: str, event_dict: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _add_service(_logger: Any, _method: str, event_dict: dict[str, Any]) -> dict[str, Any]:
         event_dict.setdefault("service_name", service_name)
         return event_dict
 
