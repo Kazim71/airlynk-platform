@@ -73,6 +73,12 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run unit tests with coverage
+        # ---------------------------------------------------------------------
+        # NOTE: The project is currently in the infrastructure/bootstrap phase.
+        # The coverage threshold is temporarily lowered in pyproject.toml.
+        # The threshold will increase as business modules and integration
+        # tests are implemented.
+        # ---------------------------------------------------------------------
         env:
           APP_ENV: development
           JWT_SECRET: ci-test-secret-at-least-32-characters-long
