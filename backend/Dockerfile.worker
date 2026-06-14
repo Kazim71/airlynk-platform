@@ -45,5 +45,5 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 # Celery worker entrypoint
-CMD ["celery", "-A", "backend.services.worker.celery_app", "worker", \
+CMD ["celery", "-A", "backend.worker.celery_app", "worker", \
      "--loglevel=info", "--concurrency=4", "-Q", "airlynk.default"]

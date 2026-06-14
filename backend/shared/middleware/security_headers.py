@@ -31,5 +31,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         response = await call_next(request)
         for header, value in _SECURITY_HEADERS.items():
-            response.headers.setdefault(header, value)
+            # Allow Swagger UI to load by relaxing CSP on /docs and /openapi.json
+            if header == "Content-Security-Policy" and request.url.path in ["/docs", "/openapi.json"]:
+                response.headers.setdefault(
+                    header, "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: cdn.jsdelivr.net; img-src 'self' data: fastapitiangolo.tiangolo.com;"
+                )
+            else:
+                response.headers.setdefault(header, value)
         return response

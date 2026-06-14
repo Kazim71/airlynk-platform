@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AirLynk Realtime WebSocket Test</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .log { border: 1px solid #ccc; height: 300px; overflow-y: scroll; padding: 10px; background: #f9f9f9; }
+        button, input { padding: 5px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h2>Operator Live Dashboard Feed</h2>
+    <div>
+        <label>Operator Token:</label><br>
+        <input type="text" id="token" style="width: 100%;" placeholder="Enter JWT operator token here">
+    </div>
+    <button onclick="connect()">Connect</button>
+    <button onclick="disconnect()">Disconnect</button>
+    <button onclick="ping()">Ping</button>
+    
+    <h3>Live Events:</h3>
+    <div id="log" class="log"></div>
+
+    <script>
+        let ws;
+        const logDiv = document.getElementById("log");
+
+        function log(msg) {
+            const div = document.createElement("div");
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logDiv.prepend(div);
+        }
+
+        function connect() {
+            const token = document.getElementById("token").value;
+            if (!token) {
+                log("Please provide a token.");
+                return;
+            }
+            
+            if (ws) {
+                ws.close();
+            }
+
+            log("Connecting...");
+            ws = new WebSocket(`ws://localhost:8000/ws/operators/live?token=${token}`);
+
+            ws.onopen = () => {
+                log("Connected to Operator Live Feed.");
+            };
+
+            ws.onmessage = (event) => {
+                log(`Received: ${event.data}`);
+            };
+
+            ws.onclose = (event) => {
+                log(`Disconnected. Code: ${event.code}, Reason: ${event.reason}`);
+            };
+
+            ws.onerror = (error) => {
+                log(`WebSocket Error: ${error}`);
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                log("Disconnected manually.");
+            }
+        }
+
+        function ping() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send("ping");
+                log("Sent ping");
+            } else {
+                log("WebSocket not connected.");
+            }
+        }
+    </script>
+</body>
+</html>

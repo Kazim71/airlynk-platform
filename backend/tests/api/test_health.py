@@ -19,16 +19,16 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     """Create an async test client with mocked infrastructure."""
     # Mock all infrastructure init/close to avoid requiring real services
     with (
-        patch("backend.services.api.app.main.init_db", new_callable=AsyncMock),
-        patch("backend.services.api.app.main.close_db", new_callable=AsyncMock),
-        patch("backend.services.api.app.main.init_redis", new_callable=AsyncMock),
-        patch("backend.services.api.app.main.close_redis", new_callable=AsyncMock),
-        patch("backend.services.api.app.main.init_rabbitmq", new_callable=AsyncMock),
-        patch("backend.services.api.app.main.close_rabbitmq", new_callable=AsyncMock),
-        patch("backend.services.api.app.main.setup_tracing"),
-        patch("backend.services.api.app.main.shutdown_tracing"),
+        patch("backend.main.init_db", new_callable=AsyncMock),
+        patch("backend.main.close_db", new_callable=AsyncMock),
+        patch("backend.main.init_redis", new_callable=AsyncMock),
+        patch("backend.main.close_redis", new_callable=AsyncMock),
+        patch("backend.main.init_rabbitmq", new_callable=AsyncMock),
+        patch("backend.main.close_rabbitmq", new_callable=AsyncMock),
+        patch("backend.main.setup_tracing"),
+        patch("backend.main.shutdown_tracing"),
     ):
-        from backend.services.api.app.main import create_app
+        from backend.main import create_app
 
         app = create_app()
         async with AsyncClient(
@@ -45,17 +45,17 @@ class TestHealthEndpoint:
     async def test_health_endpoint_returns_200(self, client: AsyncClient) -> None:
         with (
             patch(
-                "backend.services.api.app.api.routes.health._check_postgres",
+                "backend.shared.api.routes.health._check_postgres",
                 new_callable=AsyncMock,
                 return_value=True,
             ),
             patch(
-                "backend.services.api.app.api.routes.health.redis_health_check",
+                "backend.shared.api.routes.health.redis_health_check",
                 new_callable=AsyncMock,
                 return_value=True,
             ),
             patch(
-                "backend.services.api.app.api.routes.health.rabbitmq_health_check",
+                "backend.shared.api.routes.health.rabbitmq_health_check",
                 new_callable=AsyncMock,
                 return_value=True,
             ),
@@ -72,17 +72,17 @@ class TestHealthEndpoint:
     async def test_health_degraded_when_redis_down(self, client: AsyncClient) -> None:
         with (
             patch(
-                "backend.services.api.app.api.routes.health._check_postgres",
+                "backend.shared.api.routes.health._check_postgres",
                 new_callable=AsyncMock,
                 return_value=True,
             ),
             patch(
-                "backend.services.api.app.api.routes.health.redis_health_check",
+                "backend.shared.api.routes.health.redis_health_check",
                 new_callable=AsyncMock,
                 return_value=False,
             ),
             patch(
-                "backend.services.api.app.api.routes.health.rabbitmq_health_check",
+                "backend.shared.api.routes.health.rabbitmq_health_check",
                 new_callable=AsyncMock,
                 return_value=True,
             ),

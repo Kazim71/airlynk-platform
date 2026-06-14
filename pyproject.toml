@@ -33,7 +33,7 @@ dependencies = [
     "celery[redis]>=5.4.0,<6.0.0",
 
     # --- Validation & Config ---
-    "pydantic>=2.10.0,<3.0.0",
+    "pydantic[email]>=2.10.0,<3.0.0",
     "pydantic-settings>=2.7.0,<3.0.0",
 
     # --- Security ---
@@ -108,6 +108,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+"*test_*.py" = ["S101", "S106"]
 "backend/tests/**/*.py" = ["S101", "S106"]
 
 [tool.ruff.lint.isort]

@@ -10,6 +10,7 @@ Naming convention:  service.domain.action
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any
@@ -24,22 +25,62 @@ logger = logging.getLogger(__name__)
 _connection: aio_pika.abc.AbstractRobustConnection | None = None
 _channel: aio_pika.abc.AbstractChannel | None = None
 _exchange: aio_pika.abc.AbstractExchange | None = None
+_retry_task: asyncio.Task[None] | None = None
 
 EXCHANGE_NAME = "airlynk.events"
 
 
-async def init_rabbitmq(settings: Settings | None = None) -> None:
-    """Open a robust connection, create channel and topic exchange."""
+_post_connect_hooks: list[Any] = []
+
+def register_consumer_setup(hook: Any) -> None:
+    """Register a hook to run when RabbitMQ connects."""
+    _post_connect_hooks.append(hook)
+
+async def _connect_with_retry(settings: Settings) -> None:
+    """Background task to connect to RabbitMQ with exponential backoff."""
     global _connection, _channel, _exchange
+    attempt = 1
+    backoff = 2
+
+    while True:
+        try:
+            _connection = await aio_pika.connect_robust(settings.rabbitmq_url)
+            _channel = await _connection.channel()
+            _exchange = await _channel.declare_exchange(
+                EXCHANGE_NAME,
+                ExchangeType.TOPIC,
+                durable=True,
+            )
+            logger.info("RabbitMQ connection established", extra={"exchange": EXCHANGE_NAME})
+            
+            # Start consumers
+            for hook in _post_connect_hooks:
+                try:
+                    await hook()
+                except Exception as e:
+                    logger.error(f"Failed to run post-connect hook: {e}")
+            break
+        except Exception as e:
+            logger.warning(
+                "RabbitMQ connection failed, retrying in background",
+                extra={
+                    "attempt": attempt,
+                    "target": settings.rabbitmq_url,
+                    "backoff_seconds": backoff,
+                    "error": str(e),
+                },
+            )
+            await asyncio.sleep(backoff)
+            attempt += 1
+            backoff = min(backoff * 2, 30)
+
+
+
+async def init_rabbitmq(settings: Settings | None = None) -> None:
+    """Start background connection loop without blocking API startup."""
+    global _retry_task
     settings = settings or get_settings()
-    _connection = await aio_pika.connect_robust(settings.rabbitmq_url)
-    _channel = await _connection.channel()
-    _exchange = await _channel.declare_exchange(
-        EXCHANGE_NAME,
-        ExchangeType.TOPIC,
-        durable=True,
-    )
-    logger.info("RabbitMQ connection established", extra={"exchange": EXCHANGE_NAME})
+    _retry_task = asyncio.create_task(_connect_with_retry(settings))
 
 
 async def close_rabbitmq() -> None:
@@ -63,8 +104,10 @@ async def publish_event(routing_key: str, payload: dict[str, Any]) -> None:
         payload: Serialisable dict — typically an ``EventEnvelope.model_dump()``.
     """
     if _exchange is None:
-        msg = "RabbitMQ not initialised. Call init_rabbitmq() during startup."
-        raise RuntimeError(msg)
+        logger.warning(
+            "Event dropped because RabbitMQ is not connected", extra={"routing_key": routing_key}
+        )
+        return
 
     message = Message(
         body=json.dumps(payload, default=str).encode(),
@@ -81,3 +124,32 @@ async def rabbitmq_health_check() -> bool:
         return _connection is not None and not _connection.is_closed
     except Exception:
         return False
+
+
+async def start_consumer(
+    queue_name: str,
+    routing_keys: list[str],
+    callback: Any,
+) -> None:
+    """Declare a queue, bind it to routing keys on the topic exchange, and start consuming."""
+    if _channel is None or _exchange is None:
+        logger.error("Cannot start consumer: RabbitMQ is not connected.")
+        return
+
+    try:
+        queue = await _channel.declare_queue(queue_name, durable=True)
+        for rk in routing_keys:
+            await queue.bind(_exchange, routing_key=rk)
+            
+        async def _process_message(message: aio_pika.abc.AbstractIncomingMessage) -> None:
+            async with message.process():
+                try:
+                    payload = json.loads(message.body.decode())
+                    await callback(payload)
+                except Exception as e:
+                    logger.error(f"Error processing RabbitMQ message: {e}")
+
+        await queue.consume(_process_message)
+        logger.info(f"Started consuming queue {queue_name} with keys {routing_keys}")
+    except Exception as e:
+        logger.error(f"Failed to start RabbitMQ consumer {queue_name}: {e}")

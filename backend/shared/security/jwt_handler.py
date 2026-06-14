@@ -14,7 +14,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from jose import JWTError, jwt
+from jose import JWTError, jwt  # type: ignore[import-untyped]
 
 from backend.shared.config.settings import get_settings
 from backend.shared.exceptions.handlers import AuthenticationError

@@ -64,6 +64,7 @@ async def get_current_user(
     # Attach to request state for downstream access
     request.state.user_id = payload.get("sub")
     request.state.user_role = payload.get("role")
+    request.state.user_permissions = payload.get("permissions", [])
     return payload
 
 
@@ -85,3 +86,18 @@ def require_roles(*allowed_roles: Role):  # type: ignore[no-untyped-def]
         return user
 
     return _role_checker
+
+
+def require_permissions(*required_permissions: str):  # type: ignore[no-untyped-def]
+    """FastAPI dependency factory — denies access if user lacks all required permissions."""
+
+    async def _permission_checker(
+        user: dict[str, Any] = Depends(get_current_user),
+    ) -> dict[str, Any]:
+        user_perms = set(user.get("permissions", []))
+        for req_p in required_permissions:
+            if req_p not in user_perms:
+                raise AuthorizationError(message=f"Missing required permission: '{req_p}'")
+        return user
+
+    return _permission_checker

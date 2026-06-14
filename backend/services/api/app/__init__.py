@@ -1,1 +1,0 @@
-"""AirLynk API application package."""

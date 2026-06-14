@@ -129,6 +129,8 @@ services:
     env_file:
       - .env.development
     depends_on:
+      postgres:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
       redis:
@@ -163,7 +165,7 @@ services:
     image: grafana/grafana:11.3.0
     container_name: airlynk-grafana
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin

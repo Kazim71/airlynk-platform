@@ -32,7 +32,16 @@ class EventName(StrEnum):
     # Booking events
     BOOKING_TRIP_CREATED = "booking.trip.created"
     BOOKING_TRIP_ASSIGNED = "booking.trip.assigned"
+    BOOKING_TRIP_STARTED = "booking.trip.started"
     BOOKING_TRIP_COMPLETED = "booking.trip.completed"
+    BOOKING_TRIP_CANCELLED = "booking.trip.cancelled"
+
+    # Dispatch events
+    DISPATCH_ASSIGNMENT_REQUESTED = "dispatch.assignment.requested"
+    DISPATCH_DRIVER_SELECTED = "dispatch.driver.selected"
+    DISPATCH_ASSIGNMENT_CONFIRMED = "dispatch.assignment.confirmed"
+    DISPATCH_ASSIGNMENT_FAILED = "dispatch.assignment.failed"
+    DISPATCH_RETRY_TRIGGERED = "dispatch.retry.triggered"
 
     # Notification events
     NOTIFICATION_EMAIL_SENT = "notification.email.sent"
