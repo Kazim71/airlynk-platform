@@ -14,6 +14,8 @@ Run with:
 
 from __future__ import annotations
 
+from typing import Any
+
 from celery import Celery
 
 from backend.shared.config.settings import get_settings
@@ -58,5 +60,35 @@ celery_app.autodiscover_tasks(
     [
         "backend.services.booking.worker",
         "backend.services.dispatch.worker",
+        "backend.services.notification.worker",
     ]
 )
+
+import time
+
+from celery.signals import task_postrun, task_prerun, worker_process_init
+
+from backend.shared.observability.metrics import CELERY_TASK_DURATION
+from backend.shared.observability.tracing import setup_tracing
+
+
+@worker_process_init.connect  # type: ignore
+def configure_worker_tracing(**kwargs: Any) -> None:
+    """Initialise OpenTelemetry inside each Celery worker process."""
+    setup_tracing()
+
+
+_task_start_times: dict[str, float] = {}
+
+
+@task_prerun.connect  # type: ignore
+def task_prerun_handler(task_id: str, task: Any, *args: Any, **kwargs: Any) -> None:
+    _task_start_times[task_id] = time.perf_counter()
+
+
+@task_postrun.connect  # type: ignore
+def task_postrun_handler(task_id: str, task: Any, *args: Any, **kwargs: Any) -> None:
+    start_time = _task_start_times.pop(task_id, None)
+    if start_time is not None:
+        duration = time.perf_counter() - start_time
+        CELERY_TASK_DURATION.labels(task_name=task.name).observe(duration)

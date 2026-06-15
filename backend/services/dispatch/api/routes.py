@@ -14,14 +14,14 @@ from backend.services.dispatch.schemas.dispatch import (
 )
 from backend.services.dispatch.service.dispatch_service import DispatchService
 from backend.services.fleet.repository.fleet_repository import FleetRepository
+from backend.shared.cache.redis_client import get_redis
 from backend.shared.database.session import get_db_session
 from backend.shared.exceptions.handlers import ValidationError
-from backend.shared.cache.redis_client import get_redis
 
 router = APIRouter(prefix="/dispatch", tags=["dispatch"])
 
 
-def get_dispatch_service(
+def get_dispatch_service(  # type: ignore
     session=Depends(get_db_session),
     redis=Depends(get_redis),
 ) -> DispatchService:
@@ -37,7 +37,7 @@ def get_dispatch_service(
 async def update_availability(
     update: DriverAvailabilityUpdate,
     service: DispatchService = Depends(get_dispatch_service),
-) -> dict:
+) -> dict:  # type: ignore
     """Update driver online/offline status."""
     try:
         await service.update_driver_availability(
@@ -56,7 +56,7 @@ async def submit_dispatch_decision(
     decision: DispatchDecision,
     background_tasks: BackgroundTasks,
     service: DispatchService = Depends(get_dispatch_service),
-) -> dict:
+) -> dict:  # type: ignore
     """Submit a driver's decision (accept/reject) for an assignment offer."""
     try:
         # Run in background to avoid blocking the API response
@@ -73,7 +73,7 @@ async def trigger_manual_dispatch(
     booking_id: UUID,
     background_tasks: BackgroundTasks,
     service: DispatchService = Depends(get_dispatch_service),
-) -> dict:
+) -> dict:  # type: ignore
     """Manually trigger the dispatch process for a booking."""
     background_tasks.add_task(service.start_dispatch, booking_id)
     return {"status": "success", "message": "Dispatch triggered"}

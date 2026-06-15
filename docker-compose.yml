@@ -194,6 +194,39 @@ services:
       - airlynk-network
     restart: unless-stopped
 
+  # -----------------------------------------------------------------
+  # Promtail
+  # -----------------------------------------------------------------
+  promtail:
+    image: grafana/promtail:3.2.1
+    container_name: airlynk-promtail
+    volumes:
+      - ./observability/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - airlynk-network
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+  # -----------------------------------------------------------------
+  # Tempo (OpenTelemetry Trace Ingestion)
+  # -----------------------------------------------------------------
+  tempo:
+    image: grafana/tempo:2.6.0
+    container_name: airlynk-tempo
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./observability/tempo/tempo-config.yml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "4317:4317"  # OTLP gRPC receiver
+      - "4318:4318"  # OTLP HTTP receiver
+    networks:
+      - airlynk-network
+    restart: unless-stopped
+
 # -----------------------------------------------------------------
 # Volumes  (DOCKER_STRATEGY.md §6)
 # -----------------------------------------------------------------
@@ -203,6 +236,8 @@ volumes:
   rabbitmq-data:
     driver: local
   grafana-data:
+    driver: local
+  tempo-data:
     driver: local
 
 # -----------------------------------------------------------------

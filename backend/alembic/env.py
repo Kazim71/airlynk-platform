@@ -22,8 +22,9 @@ from alembic import context
 from backend.services.auth.models.user import *  # noqa: F403
 from backend.services.booking.models.booking import *  # noqa: F403
 from backend.services.booking.models.location import *  # noqa: F403
-from backend.services.fleet.models.fleet import *  # noqa: F403
 from backend.services.dispatch.models.dispatch import *  # noqa: F403
+from backend.services.fleet.models.fleet import *  # noqa: F403
+from backend.services.notification.models.notification import *  # noqa: F403
 from backend.shared.config.settings import get_settings
 from backend.shared.database.base import Base
 

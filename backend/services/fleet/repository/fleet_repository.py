@@ -3,7 +3,9 @@ AirLynk — Fleet Repository.
 """
 
 from uuid import UUID
+
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from backend.services.fleet.models.fleet import Driver
 
 

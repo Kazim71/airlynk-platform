@@ -1,0 +1,34 @@
+{
+  "title": "AirLynk - API Overview",
+  "uid": "api-overview",
+  "tags": ["airlynk", "api"],
+  "timezone": "browser",
+  "refresh": "10s",
+  "schemaVersion": 36,
+  "panels": [
+    {
+      "title": "Total HTTP Requests",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "rate(airlynk_http_requests_total[1m])", "legendFormat": "{{method}} {{path}} {{status}}"}]
+    },
+    {
+      "title": "Active Requests",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "airlynk_http_active_requests"}]
+    },
+    {
+      "title": "HTTP Errors (5xx)",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "rate(airlynk_http_errors_total[1m])", "legendFormat": "{{method}} {{path}}"}]
+    },
+    {
+      "title": "Request Latency (p95)",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(airlynk_http_request_duration_seconds_bucket[5m])) by (le, method, path))", "legendFormat": "{{method}} {{path}}"}]
+    }
+  ]
+}

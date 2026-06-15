@@ -2,12 +2,12 @@
 AirLynk — Realtime WebSocket Routes.
 """
 
+import json
 import logging
-from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect, status
-from pydantic import ValidationError as PydanticValidationError
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
+from opentelemetry import trace
 
 from backend.services.realtime.schemas.tracking import LocationUpdate
 from backend.services.realtime.service.tracking_service import (
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/ws", tags=["realtime"])
 
 
-async def get_token_payload(token: str = Query(..., description="JWT access token")) -> dict:
+async def get_token_payload(token: str = Query(..., description="JWT access token")) -> dict:  # type: ignore
     """Validate JWT token from query parameter."""
     try:
         payload = decode_token(token)
@@ -39,7 +39,7 @@ async def get_token_payload(token: str = Query(..., description="JWT access toke
 
 
 @router.websocket("/drivers/{driver_id}")
-async def driver_websocket(
+async def driver_websocket(  # type: ignore
     websocket: WebSocket,
     driver_id: UUID,
     token: str = Query(...),
@@ -53,39 +53,42 @@ async def driver_websocket(
         # Enforce RBAC: Only the driver themselves or an operator can access
         user_id = payload.get("sub")
         roles = payload.get("roles", [])
-        
+
         if str(driver_id) != user_id and "operator" not in roles and "admin" not in roles:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
-            
+
     except AuthenticationError:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
     channel = f"{CHANNEL_DRIVER_PREFIX}{driver_id}"
     await manager.connect(websocket, channel)
-    
+
+    tracer = trace.get_tracer(__name__)
     try:
         while True:
             data = await websocket.receive_text()
-            print(f"[DEBUG] Received data from driver {driver_id}: {data}")
-            try:
-                payload = json.loads(data)
-                location = LocationUpdate(**payload)
-                await TrackingService.update_driver_location(driver_id, location)
-                print(f"[DEBUG] Successfully processed location update for driver {driver_id}")
-            except Exception as inner_e:
-                print(f"[ERROR] Error processing location: {inner_e}")
+
+            with tracer.start_as_current_span(
+                "websocket_receive_location",
+                kind=trace.SpanKind.SERVER,
+                attributes={"driver_id": str(driver_id)},
+            ):
+                try:
+                    payload = json.loads(data)
+                    location = LocationUpdate(**payload)
+                    await TrackingService.update_driver_location(driver_id, location)
+                except Exception:
+                    pass
     except WebSocketDisconnect:
-        print(f"[DEBUG] Driver {driver_id} disconnected from WebSocket")
         await manager.disconnect(websocket, channel)
-    except Exception as e:
-        print(f"[ERROR] WebSocket error on driver {driver_id}: {e}")
+    except Exception:
         await manager.disconnect(websocket, channel)
 
 
 @router.websocket("/bookings/{booking_id}")
-async def booking_websocket(
+async def booking_websocket(  # type: ignore
     websocket: WebSocket,
     booking_id: UUID,
     token: str = Query(...),
@@ -107,7 +110,7 @@ async def booking_websocket(
 
     channel = f"{CHANNEL_BOOKING_PREFIX}{booking_id}"
     await manager.connect(websocket, channel)
-    
+
     try:
         while True:
             # Keep connection alive; clients mostly just listen on this endpoint.
@@ -123,7 +126,7 @@ async def booking_websocket(
 
 
 @router.websocket("/operators/live")
-async def operators_live_websocket(
+async def operators_live_websocket(  # type: ignore
     websocket: WebSocket,
     token: str = Query(...),
 ):
@@ -141,7 +144,7 @@ async def operators_live_websocket(
         return
 
     await manager.connect(websocket, CHANNEL_OPERATORS)
-    
+
     try:
         while True:
             data = await websocket.receive_text()
@@ -152,4 +155,3 @@ async def operators_live_websocket(
     except Exception as e:
         logger.error(f"WebSocket error on operator live feed: {e}")
         await manager.disconnect(websocket, CHANNEL_OPERATORS)
-

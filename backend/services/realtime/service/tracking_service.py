@@ -2,9 +2,7 @@
 AirLynk — Realtime Tracking Service.
 """
 
-import json
 import logging
-from datetime import UTC, datetime
 from uuid import UUID
 
 from backend.services.realtime.schemas.tracking import LocationUpdate, RealtimeEvent
@@ -22,6 +20,7 @@ CHANNEL_DRIVER_PREFIX = "realtime:driver:"
 CHANNEL_BOOKING_PREFIX = "realtime:booking:"
 CHANNEL_OPERATORS = "realtime:operators"
 
+
 class TrackingService:
     """Handles driver location updates and presence tracking."""
 
@@ -32,10 +31,8 @@ class TrackingService:
 
         try:
             # 1. Store in Redis GEO (longitude, latitude, member)
-            print(f"[DEBUG] Adding to GEO: {location.lng}, {location.lat}, {driver_id}")
             await redis.geoadd(
-                REDIS_KEY_DRIVER_LOCATIONS,
-                (location.lng, location.lat, str(driver_id))
+                REDIS_KEY_DRIVER_LOCATIONS, (location.lng, location.lat, str(driver_id))
             )
 
             # 2. Update driver presence TTL (expires after 60 seconds)
@@ -51,17 +48,15 @@ class TrackingService:
                     "lng": location.lng,
                     "heading": location.heading,
                     "speed": location.speed,
-                    "timestamp": location.timestamp.isoformat()
-                }
+                    "timestamp": location.timestamp.isoformat(),
+                },
             )
             event_json = event.model_dump_json()
 
             # Broadcast
             driver_channel = f"{CHANNEL_DRIVER_PREFIX}{driver_id}"
-            print(f"[DEBUG] Broadcasting to {driver_channel} and {CHANNEL_OPERATORS}")
             await manager.broadcast_to_channel(driver_channel, event_json)
             await manager.broadcast_to_channel(CHANNEL_OPERATORS, event_json)
-            print("[DEBUG] Broadcast complete")
         except Exception as e:
             logger.error(f"Error updating driver location: {e}")
             raise
@@ -70,8 +65,8 @@ class TrackingService:
     async def get_active_drivers() -> list[str]:
         """Get a list of currently active driver IDs (those with presence)."""
         redis = get_redis_client()
-        
-        # In a real system, scanning keys might be slow, so a Sorted Set with timestamps 
+
+        # In a real system, scanning keys might be slow, so a Sorted Set with timestamps
         # is often better. For this monolith, SCAN on presence keys is acceptable or
         # relying on the active dispatch pool.
         # Let's use a simple pattern scan for now.
@@ -85,4 +80,3 @@ class TrackingService:
             if cursor == 0:
                 break
         return active_drivers
-

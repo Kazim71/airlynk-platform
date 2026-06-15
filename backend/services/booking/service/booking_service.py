@@ -9,14 +9,18 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from redis.asyncio import Redis
 
 from backend.services.booking.events.publishers import BookingEventPublisher
 from backend.services.booking.models.booking import Booking, BookingStatus, TripStatus
-from backend.services.booking.repository.booking_repository import BookingRepository
-from backend.services.booking.schemas.booking import AssignDriverRequest, BookingCreate
 from backend.shared.exceptions.handlers import ConflictError, NotFoundError
+from backend.shared.observability.metrics import BOOKINGS_COMPLETED_TOTAL, BOOKINGS_CREATED_TOTAL
+
+if TYPE_CHECKING:
+    from backend.services.booking.repository.booking_repository import BookingRepository
+    from backend.services.booking.schemas.booking import AssignDriverRequest, BookingCreate
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +47,7 @@ class BookingService:
         await self.redis.setex(cache_key, 3600, str(booking.booking_status))
 
         await self.publisher.publish_booking_created(booking.id, customer_id, correlation_id)
+        BOOKINGS_CREATED_TOTAL.inc()
         logger.info(f"Booking {booking.id} created by customer {customer_id}")
         return booking
 
@@ -136,6 +141,7 @@ class BookingService:
 
         await self.redis.delete(f"active_booking:{booking.id}")
         await self.publisher.publish_trip_completed(booking.id, booking.trip.id, correlation_id)
+        BOOKINGS_COMPLETED_TOTAL.inc()
         logger.info(f"Trip completed for booking {booking.id}")
         return booking
 

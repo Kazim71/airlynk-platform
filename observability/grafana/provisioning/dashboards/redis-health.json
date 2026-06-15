@@ -1,0 +1,16 @@
+{
+  "title": "AirLynk - Redis Health",
+  "uid": "redis-health",
+  "tags": ["airlynk", "redis"],
+  "timezone": "browser",
+  "refresh": "10s",
+  "schemaVersion": 36,
+  "panels": [
+    {
+      "title": "Operation Failures",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "rate(airlynk_redis_operation_failures_total[1m])"}]
+    }
+  ]
+}

@@ -23,9 +23,7 @@ async def handle_booking_event(envelope: EventEnvelope) -> None:
         return
 
     rt_event = RealtimeEvent(
-        event=envelope.event_name,
-        data=envelope.payload,
-        timestamp=envelope.timestamp
+        event=envelope.event_name, data=envelope.payload, timestamp=envelope.timestamp
     )
     event_json = rt_event.model_dump_json()
 
@@ -41,9 +39,7 @@ async def handle_dispatch_event(envelope: EventEnvelope) -> None:
     driver_id = envelope.payload.get("driver_id")
 
     rt_event = RealtimeEvent(
-        event=envelope.event_name,
-        data=envelope.payload,
-        timestamp=envelope.timestamp
+        event=envelope.event_name, data=envelope.payload, timestamp=envelope.timestamp
     )
     event_json = rt_event.model_dump_json()
 
@@ -72,12 +68,12 @@ def init_realtime_consumers() -> None:
             EventName.BOOKING_TRIP_COMPLETED,
             EventName.BOOKING_TRIP_CANCELLED,
         ]
-        
-        async def _handle_booking_payload(payload: dict) -> None:
+
+        async def _handle_booking_payload(payload: dict) -> None:  # type: ignore
             envelope = EventEnvelope(**payload)
             await handle_booking_event(envelope)
 
-        await start_consumer("realtime_booking_queue", booking_keys, _handle_booking_payload)
+        await start_consumer("realtime_booking_queue", booking_keys, _handle_booking_payload)  # type: ignore
 
         # Route dispatch events
         dispatch_keys = [
@@ -88,11 +84,10 @@ def init_realtime_consumers() -> None:
             EventName.DISPATCH_RETRY_TRIGGERED,
         ]
 
-        async def _handle_dispatch_payload(payload: dict) -> None:
+        async def _handle_dispatch_payload(payload: dict) -> None:  # type: ignore
             envelope = EventEnvelope(**payload)
             await handle_dispatch_event(envelope)
 
-        await start_consumer("realtime_dispatch_queue", dispatch_keys, _handle_dispatch_payload)
+        await start_consumer("realtime_dispatch_queue", dispatch_keys, _handle_dispatch_payload)  # type: ignore
 
     register_consumer_setup(setup)
-

@@ -6,10 +6,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.services.booking.models.booking import BookingStatus, TripStatus
+if TYPE_CHECKING:
+    from backend.services.booking.models.booking import BookingStatus, TripStatus
 
 
 class TripResponse(BaseModel):

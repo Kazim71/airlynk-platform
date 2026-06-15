@@ -1,0 +1,38 @@
+groups:
+  - name: airlynk_alerts
+    rules:
+      - alert: HighErrorRate
+        expr: rate(airlynk_http_errors_total[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: High HTTP 5xx error rate
+          description: "The API is experiencing a high error rate ({{ $value }} errors/sec)."
+
+      - alert: DispatchTimeoutsSpike
+        expr: rate(airlynk_dispatch_timeouts_total[5m]) > 0.05
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Dispatch Timeouts Increasing
+          description: "Drivers are failing to respond to dispatch requests quickly."
+
+      - alert: RabbitMQPublishFailures
+        expr: rate(airlynk_rabbitmq_publish_failures_total[1m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: RabbitMQ Publish Failures
+          description: "The API is failing to publish events to RabbitMQ."
+
+      - alert: RedisFailures
+        expr: rate(airlynk_redis_operation_failures_total[1m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Redis Operation Failures
+          description: "The API is failing to communicate with Redis."

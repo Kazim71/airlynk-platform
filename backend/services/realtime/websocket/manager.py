@@ -8,12 +8,15 @@ to broadcast events to connected clients, enabling horizontal scalability.
 import asyncio
 import logging
 from typing import Any
-from uuid import UUID
 
 from fastapi import WebSocket
 from redis.asyncio.client import PubSub
 
 from backend.shared.cache.redis_client import get_redis_client
+from backend.shared.observability.metrics import (
+    WEBSOCKET_ACTIVE_CONNECTIONS,
+    WEBSOCKET_MESSAGES_TOTAL,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +37,8 @@ class ConnectionManager:
             self.active_connections[channel] = []
         self.active_connections[channel].append(websocket)
         logger.info(f"WebSocket connected to channel: {channel}")
+        domain = channel.split(":")[0] if ":" in channel else channel
+        WEBSOCKET_ACTIVE_CONNECTIONS.labels(domain=domain).inc()
 
         if not self.pubsub_task:
             await self.start_redis_listener()
@@ -49,7 +54,9 @@ class ConnectionManager:
             try:
                 self.active_connections[channel].remove(websocket)
                 logger.info(f"WebSocket disconnected from channel: {channel}")
-                
+                domain = channel.split(":")[0] if ":" in channel else channel
+                WEBSOCKET_ACTIVE_CONNECTIONS.labels(domain=domain).dec()
+
                 # Unsubscribe from Redis if no more clients
                 if not self.active_connections[channel]:
                     del self.active_connections[channel]
@@ -71,40 +78,34 @@ class ConnectionManager:
         if not self._pubsub:
             return
 
-        print("[DEBUG] Started Redis Pub/Sub listener task")
         try:
             async for message in self._pubsub.listen():
-                print(f"[DEBUG] Raw Redis message: {message}")
                 if message["type"] == "message":
                     channel = message["channel"]
                     data = message["data"]
-                    
+
                     # Ensure string
                     if isinstance(channel, bytes):
                         channel = channel.decode("utf-8")
                     if isinstance(data, bytes):
                         data = data.decode("utf-8")
-                        
-                    print(f"[DEBUG] Redis message received: channel={channel}")
-                    
+
+
                     if channel in self.active_connections:
                         # Send to all websockets in this channel
                         disconnected = []
                         for ws in self.active_connections[channel]:
                             try:
                                 await ws.send_text(data)
-                                print(f"[DEBUG] Sent text to {ws}")
-                            except Exception as e:
-                                print(f"[ERROR] Failed to send to websocket: {e}")
+                            except Exception:
                                 disconnected.append(ws)
-                        
+
                         # Cleanup dead connections
                         for ws in disconnected:
                             await self.disconnect(ws, channel)
-        except Exception as e:
-            print(f"[ERROR] Redis Pub/Sub listener failed: {e}")
+        except Exception:
+            pass
         finally:
-            print("[DEBUG] Redis Pub/Sub listener exited")
             self.pubsub_task = None
             self._pubsub = None
 
@@ -112,6 +113,7 @@ class ConnectionManager:
         """Publish a message to a Redis channel (which will reach all instances)."""
         redis = get_redis_client()
         await redis.publish(channel, message)
+        WEBSOCKET_MESSAGES_TOTAL.inc()
 
 
 # Singleton instance

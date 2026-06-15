@@ -1,0 +1,16 @@
+{
+  "title": "AirLynk - Celery Workers",
+  "uid": "celery-workers",
+  "tags": ["airlynk", "celery"],
+  "timezone": "browser",
+  "refresh": "10s",
+  "schemaVersion": 36,
+  "panels": [
+    {
+      "title": "Task Duration (p95)",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(airlynk_celery_task_duration_seconds_bucket[5m])) by (le, task_name))", "legendFormat": "{{task_name}}"}]
+    }
+  ]
+}

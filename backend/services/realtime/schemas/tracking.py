@@ -4,7 +4,6 @@ AirLynk — Realtime Domain Schemas.
 
 from datetime import UTC, datetime
 from typing import Any
-from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -25,4 +24,3 @@ class RealtimeEvent(BaseModel):
     event: str = Field(..., description="Name of the event (e.g., booking.updated)")
     data: dict[str, Any] = Field(default_factory=dict, description="Event data payload")
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
-

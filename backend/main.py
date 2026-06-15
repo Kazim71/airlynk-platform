@@ -120,8 +120,10 @@ def _register_routes(application: FastAPI) -> None:
     from backend.services.auth.api.routes import router as auth_router
     from backend.services.booking.api.routes import router as booking_router
     from backend.services.dispatch.api.routes import router as dispatch_router
+    from backend.services.notification.api.endpoints import router as notification_router
     from backend.services.realtime.api.routes import router as realtime_router
     from backend.services.realtime.events.consumers import init_realtime_consumers
+    from backend.services.notification.events.consumers import init_notification_consumers
     from backend.shared.api.routes.health import router as health_router
     from backend.shared.api.routes.metrics import router as metrics_router
 
@@ -130,10 +132,12 @@ def _register_routes(application: FastAPI) -> None:
     application.include_router(auth_router, prefix="/api/v1")
     application.include_router(booking_router, prefix="/api/v1")
     application.include_router(dispatch_router, prefix="/api/v1")
+    application.include_router(notification_router, prefix="/api/v1")
     application.include_router(realtime_router)
 
-    # Initialize realtime event consumers
+    # Initialize event consumers
     init_realtime_consumers()
+    init_notification_consumers()
 
 
 # Module-level app instance — used by Uvicorn

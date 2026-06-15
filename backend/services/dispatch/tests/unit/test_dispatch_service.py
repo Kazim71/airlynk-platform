@@ -23,10 +23,10 @@ def test_matching_engine_sorting() -> None:
 
     assert len(scored) == 3
     # The closest one (0.05, 0.05) should have the highest score
-    assert scored[0].driver_id == drivers[1]["driver_id"]
-    assert scored[1].driver_id == drivers[0]["driver_id"]
-    assert scored[2].driver_id == drivers[2]["driver_id"]
-    
+    assert str(scored[0].driver_id) == drivers[1]["driver_id"]
+    assert str(scored[1].driver_id) == drivers[0]["driver_id"]
+    assert str(scored[2].driver_id) == drivers[2]["driver_id"]
+
     assert scored[0].score > scored[1].score
     assert scored[1].score > scored[2].score
 

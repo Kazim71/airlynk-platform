@@ -7,6 +7,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +20,9 @@ from backend.services.booking.models.booking import (
     Trip,
     TripStatus,
 )
-from backend.services.booking.schemas.booking import BookingCreate
+
+if TYPE_CHECKING:
+    from backend.services.booking.schemas.booking import BookingCreate
 
 
 class BookingRepository:
@@ -53,8 +56,15 @@ class BookingRepository:
         )
         self.session.add(history)
         await self.session.commit()
-        await self.session.refresh(booking)
-        return booking
+
+        # Reload with relationships to prevent MissingGreenlet during serialization
+        stmt = (
+            select(Booking)
+            .options(selectinload(Booking.trip), selectinload(Booking.status_history))
+            .where(Booking.id == booking.id)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one()
 
     async def get_booking_by_id(self, booking_id: uuid.UUID) -> Booking | None:
         """Fetch booking with its trip and status history."""

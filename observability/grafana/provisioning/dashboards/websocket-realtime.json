@@ -1,0 +1,22 @@
+{
+  "title": "AirLynk - WebSocket & Realtime",
+  "uid": "websocket-realtime",
+  "tags": ["airlynk", "websocket"],
+  "timezone": "browser",
+  "refresh": "10s",
+  "schemaVersion": 36,
+  "panels": [
+    {
+      "title": "Active Connections by Domain",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "airlynk_websocket_active_connections", "legendFormat": "{{domain}}"}]
+    },
+    {
+      "title": "Broadcast Messages Rate",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "rate(airlynk_websocket_messages_total[1m])"}]
+    }
+  ]
+}

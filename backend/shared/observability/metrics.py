@@ -59,6 +59,128 @@ ERROR_COUNT = Counter(
     registry=REGISTRY,
 )
 
+# --- Business Metrics --------------------------------------------------------
+
+BOOKINGS_CREATED_TOTAL = Counter(
+    "airlynk_bookings_created_total",
+    "Total bookings created",
+    registry=REGISTRY,
+)
+
+BOOKINGS_COMPLETED_TOTAL = Counter(
+    "airlynk_bookings_completed_total",
+    "Total bookings completed",
+    registry=REGISTRY,
+)
+
+DISPATCH_ATTEMPTS_TOTAL = Counter(
+    "airlynk_dispatch_attempts_total",
+    "Total dispatch attempts",
+    registry=REGISTRY,
+)
+
+DISPATCH_ASSIGNMENT_RETRIES = Counter(
+    "airlynk_dispatch_assignment_retries_total",
+    "Total dispatch assignment retries",
+    registry=REGISTRY,
+)
+
+DISPATCH_TIMEOUTS_TOTAL = Counter(
+    "airlynk_dispatch_timeouts_total",
+    "Total dispatch timeouts",
+    registry=REGISTRY,
+)
+
+DRIVER_ACCEPTANCE_TOTAL = Counter(
+    "airlynk_driver_acceptance_total",
+    "Total driver acceptances",
+    registry=REGISTRY,
+)
+
+WEBSOCKET_MESSAGES_TOTAL = Counter(
+    "airlynk_websocket_messages_total",
+    "Total websocket messages broadcasted",
+    registry=REGISTRY,
+)
+
+NOTIFICATION_SEND_TOTAL = Counter(
+    "airlynk_notification_send_total",
+    "Total notifications sent",
+    ["channel"],
+    registry=REGISTRY,
+)
+
+NOTIFICATION_FAILURES_TOTAL = Counter(
+    "airlynk_notification_failures_total",
+    "Total notification delivery failures",
+    ["channel"],
+    registry=REGISTRY,
+)
+
+NOTIFICATION_RETRY_TOTAL = Counter(
+    "airlynk_notification_retry_total",
+    "Total notification delivery retries",
+    ["channel"],
+    registry=REGISTRY,
+)
+
+NOTIFICATION_PROVIDER_LATENCY = Histogram(
+    "airlynk_notification_provider_latency_seconds",
+    "Notification provider delivery latency in seconds",
+    ["channel"],
+    buckets=(0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
+    registry=REGISTRY,
+)
+
+WEBSOCKET_NOTIFICATION_BROADCASTS = Counter(
+    "airlynk_websocket_notification_broadcasts_total",
+    "Total websocket notifications broadcasted",
+    registry=REGISTRY,
+)
+
+# --- Domain & Infrastructure Metrics -----------------------------------------
+
+WEBSOCKET_ACTIVE_CONNECTIONS = Gauge(
+    "airlynk_websocket_active_connections",
+    "Number of active WebSocket connections",
+    ["domain"],
+    registry=REGISTRY,
+)
+
+RABBITMQ_MESSAGES_PUBLISHED = Counter(
+    "airlynk_rabbitmq_messages_published_total",
+    "Total RabbitMQ messages published",
+    ["routing_key"],
+    registry=REGISTRY,
+)
+
+RABBITMQ_MESSAGES_CONSUMED = Counter(
+    "airlynk_rabbitmq_messages_consumed_total",
+    "Total RabbitMQ messages consumed",
+    ["queue_name"],
+    registry=REGISTRY,
+)
+
+RABBITMQ_PUBLISH_FAILURES = Counter(
+    "airlynk_rabbitmq_publish_failures_total",
+    "Total RabbitMQ message publish failures",
+    registry=REGISTRY,
+)
+
+REDIS_OPERATION_FAILURES = Counter(
+    "airlynk_redis_operation_failures_total",
+    "Total Redis operation failures",
+    registry=REGISTRY,
+)
+
+CELERY_TASK_DURATION = Histogram(
+    "airlynk_celery_task_duration_seconds",
+    "Celery task duration in seconds",
+    ["task_name"],
+    buckets=(0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0),
+    registry=REGISTRY,
+)
+
 
 # --- Middleware for automatic collection -----------------------------------
 

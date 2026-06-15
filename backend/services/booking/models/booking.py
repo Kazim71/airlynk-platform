@@ -1,7 +1,7 @@
 """
 AirLynk — Booking & Trip Models.
 
-Defines customer bookings and their associated operational trips, 
+Defines customer bookings and their associated operational trips,
 plus booking status history for auditability.
 """
 

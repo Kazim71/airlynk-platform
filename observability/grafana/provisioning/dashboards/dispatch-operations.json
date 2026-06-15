@@ -1,0 +1,34 @@
+{
+  "title": "AirLynk - Dispatch Operations",
+  "uid": "dispatch-operations",
+  "tags": ["airlynk", "dispatch"],
+  "timezone": "browser",
+  "refresh": "10s",
+  "schemaVersion": 36,
+  "panels": [
+    {
+      "title": "Dispatch Attempts Rate",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "rate(airlynk_dispatch_attempts_total[1m])"}]
+    },
+    {
+      "title": "Driver Acceptances",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "airlynk_driver_acceptance_total"}]
+    },
+    {
+      "title": "Dispatch Timeouts",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "rate(airlynk_dispatch_timeouts_total[1m])"}]
+    },
+    {
+      "title": "Dispatch Retries",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "rate(airlynk_dispatch_assignment_retries_total[1m])"}]
+    }
+  ]
+}

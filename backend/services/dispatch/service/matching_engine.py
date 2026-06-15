@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from backend.services.booking.models.booking import Booking
-from backend.services.fleet.models.fleet import Driver
 
 
 @dataclass
@@ -40,7 +39,7 @@ class MatchingEngine:
 
     @staticmethod
     def score_drivers(
-        booking: Booking, drivers: list[dict], pickup_lat: float, pickup_lon: float
+        booking: Booking, drivers: list[dict], pickup_lat: float, pickup_lon: float  # type: ignore
     ) -> list[DriverScore]:
         """
         Score a list of drivers based on distance to the pickup location.
@@ -55,14 +54,14 @@ class MatchingEngine:
             d_lon = d.get("longitude", 0.0)
             driver_id = UUID(d["driver_id"])
 
-            distance_km = MatchingEngine.calculate_distance(
-                pickup_lat, pickup_lon, d_lat, d_lon
-            )
+            distance_km = MatchingEngine.calculate_distance(pickup_lat, pickup_lon, d_lat, d_lon)
 
             # Score logic: Closer is better. Base score 100, minus 5 points per km.
             score = max(0.0, 100.0 - (distance_km * 5.0))
 
-            scored_drivers.append(DriverScore(driver_id=driver_id, score=score, distance_km=distance_km))
+            scored_drivers.append(
+                DriverScore(driver_id=driver_id, score=score, distance_km=distance_km)
+            )
 
         # Sort descending by score
         scored_drivers.sort(key=lambda x: x.score, reverse=True)

@@ -1,0 +1,28 @@
+{
+  "title": "AirLynk - RabbitMQ Queues",
+  "uid": "rabbitmq-queues",
+  "tags": ["airlynk", "rabbitmq"],
+  "timezone": "browser",
+  "refresh": "10s",
+  "schemaVersion": 36,
+  "panels": [
+    {
+      "title": "Publish Rate",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "rate(airlynk_rabbitmq_messages_published_total[1m])", "legendFormat": "{{routing_key}}"}]
+    },
+    {
+      "title": "Consume Rate",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "rate(airlynk_rabbitmq_messages_consumed_total[1m])", "legendFormat": "{{queue_name}}"}]
+    },
+    {
+      "title": "Publish Failures",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "rate(airlynk_rabbitmq_publish_failures_total[1m])"}]
+    }
+  ]
+}

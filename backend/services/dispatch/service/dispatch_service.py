@@ -24,6 +24,11 @@ from backend.services.dispatch.repository.dispatch_repository import DispatchRep
 from backend.services.dispatch.service.matching_engine import MatchingEngine
 from backend.services.fleet.repository.fleet_repository import FleetRepository
 from backend.shared.exceptions.handlers import ValidationError
+from backend.shared.observability.metrics import (
+    DISPATCH_ASSIGNMENT_RETRIES,
+    DISPATCH_ATTEMPTS_TOTAL,
+    DRIVER_ACCEPTANCE_TOTAL,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +42,7 @@ class DispatchService:
         dispatch_repo: DispatchRepository,
         booking_repo: BookingRepository,
         fleet_repo: FleetRepository,
-        redis_client: Redis,
+        redis_client: Redis,  # type: ignore
     ) -> None:
         self.dispatch_repo = dispatch_repo
         self.booking_repo = booking_repo
@@ -56,7 +61,7 @@ class DispatchService:
         # In a real app, update driver status in Postgres via Fleet domain API/service.
         # For simplicity, we directly write to Redis active pool.
         redis_key = f"dispatch:driver:availability:{driver_id}"
-        
+
         if is_available:
             payload = {
                 "driver_id": str(driver_id),
@@ -113,7 +118,10 @@ class DispatchService:
             if not active_drivers:
                 # No drivers available -> increment retry and queue for later
                 logger.info(f"No active drivers for {booking_id}, will retry.")
-                await self.dispatch_repo.update_dispatch_status(req.id, DispatchStatus.PENDING, increment_retry=True)
+                await self.dispatch_repo.update_dispatch_status(
+                    req.id, DispatchStatus.PENDING, increment_retry=True
+                )
+                DISPATCH_ASSIGNMENT_RETRIES.inc()
                 await publish_retry_triggered(booking_id, req.retry_count + 1)
                 return
 
@@ -137,14 +145,19 @@ class DispatchService:
                 return
 
             # 4. Record the attempt
-            attempt = await self.dispatch_repo.create_dispatch_attempt(req.id, selected_driver.driver_id)
-            
+            attempt = await self.dispatch_repo.create_dispatch_attempt(
+                req.id, selected_driver.driver_id
+            )
+            DISPATCH_ATTEMPTS_TOTAL.inc()
+
             # Set a timeout in Redis for this specific attempt
             attempt_ttl_key = f"dispatch:attempt:{attempt.id}:timeout"
             await self.redis.set(attempt_ttl_key, str(booking_id), ex=OFFER_TIMEOUT_SECONDS)
 
             await publish_driver_selected(booking_id, attempt.id, selected_driver.driver_id)
-            logger.info(f"Driver {selected_driver.driver_id} selected for booking {booking_id}. Attempt: {attempt.id}")
+            logger.info(
+                f"Driver {selected_driver.driver_id} selected for booking {booking_id}. Attempt: {attempt.id}"
+            )
 
         finally:
             await self.redis.delete(lock_key)
@@ -156,10 +169,10 @@ class DispatchService:
 
         status = AttemptStatus.ACCEPTED if accepted else AttemptStatus.REJECTED
         attempt = await self.dispatch_repo.update_attempt_status(attempt_id, status)
-        
+
         if not attempt:
             raise ValidationError("Dispatch attempt not found")
-            
+
         req = await self.dispatch_repo.get_dispatch_request(attempt.dispatch_request_id)
         if not req:
             raise ValidationError("Dispatch request not found")
@@ -168,9 +181,13 @@ class DispatchService:
             # Complete the workflow
             await self.dispatch_repo.update_dispatch_status(req.id, DispatchStatus.ASSIGNED)
             await publish_assignment_confirmed(req.booking_id, attempt.driver_id)
+            DRIVER_ACCEPTANCE_TOTAL.inc()
             logger.info(f"Driver {attempt.driver_id} ACCEPTED booking {req.booking_id}")
         else:
             logger.info(f"Driver {attempt.driver_id} REJECTED booking {req.booking_id}")
             # Retry loop
-            await self.dispatch_repo.update_dispatch_status(req.id, DispatchStatus.PENDING, increment_retry=True)
+            await self.dispatch_repo.update_dispatch_status(
+                req.id, DispatchStatus.PENDING, increment_retry=True
+            )
+            DISPATCH_ASSIGNMENT_RETRIES.inc()
             await self.start_dispatch(req.booking_id)

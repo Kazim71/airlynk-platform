@@ -5,7 +5,6 @@ AirLynk — Booking API Routes.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
 from typing import Any
 
 from fastapi import APIRouter, Depends

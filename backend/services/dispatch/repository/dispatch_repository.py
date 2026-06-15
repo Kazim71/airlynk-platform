@@ -2,7 +2,6 @@
 AirLynk — Dispatch Repository.
 """
 
-from collections.abc import Sequence
 from uuid import UUID
 
 from sqlalchemy import select, update
@@ -67,9 +66,7 @@ class DispatchRepository:
         await self.session.flush()
         return result.scalar_one_or_none()
 
-    async def create_dispatch_attempt(
-        self, request_id: UUID, driver_id: UUID
-    ) -> DispatchAttempt:
+    async def create_dispatch_attempt(self, request_id: UUID, driver_id: UUID) -> DispatchAttempt:
         """Record an attempt to ping a driver."""
         attempt = DispatchAttempt(
             dispatch_request_id=request_id,

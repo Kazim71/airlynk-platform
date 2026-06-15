@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy import Enum, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.shared.database.base import Base, TimestampMixin

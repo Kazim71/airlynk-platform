@@ -21,7 +21,6 @@ async def auth_client() -> AsyncGenerator[AsyncClient, None]:
 
     app = create_app()
 
-
     async def mock_get_db_session() -> AsyncGenerator[AsyncMock, None]:
         session = AsyncMock()
         yield session

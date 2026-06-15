@@ -1,0 +1,28 @@
+{
+  "title": "AirLynk - Booking Lifecycle",
+  "uid": "booking-lifecycle",
+  "tags": ["airlynk", "booking"],
+  "timezone": "browser",
+  "refresh": "10s",
+  "schemaVersion": 36,
+  "panels": [
+    {
+      "title": "Bookings Created",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "airlynk_bookings_created_total"}]
+    },
+    {
+      "title": "Bookings Completed",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "airlynk_bookings_completed_total"}]
+    },
+    {
+      "title": "Booking Creation Rate",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "rate(airlynk_bookings_created_total[5m])"}]
+    }
+  ]
+}

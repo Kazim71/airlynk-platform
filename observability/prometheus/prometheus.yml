@@ -8,6 +8,9 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+rule_files:
+  - "prometheus-alerts.yml"
+
 scrape_configs:
   # --- AirLynk API metrics -----------------------------------------------
   - job_name: "airlynk-api"

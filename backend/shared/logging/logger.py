@@ -18,7 +18,9 @@ from collections.abc import MutableMapping
 from typing import Any, cast
 
 import structlog
+from opentelemetry import trace
 
+from backend.shared.config.settings import get_settings
 from backend.shared.middleware.correlation import request_id_ctx
 
 # Fields that must never appear in log output
@@ -64,6 +66,24 @@ def _inject_service_name(
     return event_dict
 
 
+def _inject_trace_context(
+    logger: logging.Logger, log_method: str, event_dict: structlog.types.EventDict
+) -> structlog.types.EventDict:
+    """Inject OTEL trace_id and span_id into structured logs."""
+    span = trace.get_current_span()
+    if span and span.is_recording():
+        ctx = span.get_span_context()
+        event_dict["trace_id"] = trace.format_trace_id(ctx.trace_id)
+        event_dict["span_id"] = trace.format_span_id(ctx.span_id)
+
+    # Inject static platform context
+    settings = get_settings()
+    event_dict["service_name"] = "airlynk-api"
+    event_dict["environment"] = settings.ENVIRONMENT  # type: ignore
+
+    return event_dict
+
+
 def setup_logging(log_level: str = "INFO", service_name: str = "airlynk") -> None:
     """Configure structured JSON logging for the entire application.
 
@@ -83,6 +103,7 @@ def setup_logging(log_level: str = "INFO", service_name: str = "airlynk") -> Non
         structlog.processors.TimeStamper(fmt="iso", utc=True),
         _add_service,
         _inject_request_id,
+        _inject_trace_context,
         _filter_sensitive_data,
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,

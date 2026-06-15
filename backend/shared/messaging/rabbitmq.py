@@ -17,8 +17,14 @@ from typing import Any
 
 import aio_pika
 from aio_pika import DeliveryMode, ExchangeType, Message
+from opentelemetry import propagate, trace
 
 from backend.shared.config.settings import Settings, get_settings
+from backend.shared.observability.metrics import (
+    RABBITMQ_MESSAGES_CONSUMED,
+    RABBITMQ_MESSAGES_PUBLISHED,
+    RABBITMQ_PUBLISH_FAILURES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +38,11 @@ EXCHANGE_NAME = "airlynk.events"
 
 _post_connect_hooks: list[Any] = []
 
+
 def register_consumer_setup(hook: Any) -> None:
     """Register a hook to run when RabbitMQ connects."""
     _post_connect_hooks.append(hook)
+
 
 async def _connect_with_retry(settings: Settings) -> None:
     """Background task to connect to RabbitMQ with exponential backoff."""
@@ -52,7 +60,7 @@ async def _connect_with_retry(settings: Settings) -> None:
                 durable=True,
             )
             logger.info("RabbitMQ connection established", extra={"exchange": EXCHANGE_NAME})
-            
+
             # Start consumers
             for hook in _post_connect_hooks:
                 try:
@@ -73,7 +81,6 @@ async def _connect_with_retry(settings: Settings) -> None:
             await asyncio.sleep(backoff)
             attempt += 1
             backoff = min(backoff * 2, 30)
-
 
 
 async def init_rabbitmq(settings: Settings | None = None) -> None:
@@ -109,13 +116,29 @@ async def publish_event(routing_key: str, payload: dict[str, Any]) -> None:
         )
         return
 
-    message = Message(
-        body=json.dumps(payload, default=str).encode(),
-        content_type="application/json",
-        delivery_mode=DeliveryMode.PERSISTENT,
-    )
-    await _exchange.publish(message, routing_key=routing_key)
-    logger.debug("Event published", extra={"routing_key": routing_key})
+    tracer = trace.get_tracer(__name__)
+    with tracer.start_as_current_span(
+        f"publish {routing_key}",
+        kind=trace.SpanKind.PRODUCER,
+        attributes={"messaging.system": "rabbitmq", "messaging.destination": EXCHANGE_NAME},
+    ):
+        headers: dict[str, Any] = {}
+        propagate.inject(headers)
+
+        message = Message(
+            body=json.dumps(payload, default=str).encode(),
+            content_type="application/json",
+            delivery_mode=DeliveryMode.PERSISTENT,
+            headers=headers,
+        )
+        try:
+            await _exchange.publish(message, routing_key=routing_key)
+            RABBITMQ_MESSAGES_PUBLISHED.labels(routing_key=routing_key).inc()
+            logger.debug("Event published", extra={"routing_key": routing_key})
+        except Exception as e:
+            RABBITMQ_PUBLISH_FAILURES.inc()
+            logger.error(f"Failed to publish to RabbitMQ: {e}")
+            raise
 
 
 async def rabbitmq_health_check() -> bool:
@@ -140,14 +163,28 @@ async def start_consumer(
         queue = await _channel.declare_queue(queue_name, durable=True)
         for rk in routing_keys:
             await queue.bind(_exchange, routing_key=rk)
-            
+
+        tracer = trace.get_tracer(__name__)
+
         async def _process_message(message: aio_pika.abc.AbstractIncomingMessage) -> None:
-            async with message.process():
-                try:
-                    payload = json.loads(message.body.decode())
-                    await callback(payload)
-                except Exception as e:
-                    logger.error(f"Error processing RabbitMQ message: {e}")
+            ctx = propagate.extract(message.headers or {})
+            with tracer.start_as_current_span(
+                f"consume {message.routing_key}",
+                context=ctx,
+                kind=trace.SpanKind.CONSUMER,
+                attributes={
+                    "messaging.system": "rabbitmq",
+                    "messaging.destination": queue_name,
+                    "messaging.operation": "process",
+                },
+            ):
+                async with message.process():
+                    try:
+                        RABBITMQ_MESSAGES_CONSUMED.labels(queue_name=queue_name).inc()
+                        payload = json.loads(message.body.decode())
+                        await callback(payload)
+                    except Exception as e:
+                        logger.error(f"Error processing RabbitMQ message: {e}")
 
         await queue.consume(_process_message)
         logger.info(f"Started consuming queue {queue_name} with keys {routing_keys}")
