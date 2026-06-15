@@ -10,8 +10,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field
 
-if TYPE_CHECKING:
-    from backend.services.booking.models.booking import BookingStatus, TripStatus
+from backend.services.booking.models.booking import BookingStatus, TripStatus
 
 
 class TripResponse(BaseModel):

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
-import { Activity, Car, FileText, Map, Settings, LogOut, Bell } from "lucide-react";
+import { Activity, Car, FileText, Map, Settings, LogOut, Bell, DollarSign } from "lucide-react";
 
 import { NotificationFeed } from "@/components/notifications/NotificationFeed";
 
@@ -22,6 +22,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: "/", label: "Overview", icon: Activity },
     { href: "/dispatch", label: "Dispatch", icon: Car },
     { href: "/bookings", label: "Bookings", icon: FileText },
+    { href: "/pricing", label: "Pricing", icon: DollarSign },
   ];
 
   return (

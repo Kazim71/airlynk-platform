@@ -32,6 +32,7 @@ export default function MapRenderer({ drivers }: MapRendererProps) {
   return (
     // @ts-ignore
     <MapContainer center={center} zoom={12} style={{ height: "100%", width: "100%", zIndex: 0 }}>
+      {/* @ts-ignore */}
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"

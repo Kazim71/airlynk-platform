@@ -61,8 +61,20 @@ celery_app.autodiscover_tasks(
         "backend.services.booking.worker",
         "backend.services.dispatch.worker",
         "backend.services.notification.worker",
+        "backend.services.pricing.worker",
     ]
 )
+
+celery_app.conf.beat_schedule = {
+    "recompute_surge_regions_every_minute": {
+        "task": "pricing.recompute_surge_regions",
+        "schedule": 60.0,
+    },
+    "cleanup_expired_surge_every_hour": {
+        "task": "pricing.cleanup_expired_surge",
+        "schedule": 3600.0,
+    },
+}
 
 import time
 

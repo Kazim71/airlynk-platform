@@ -121,6 +121,7 @@ def _register_routes(application: FastAPI) -> None:
     from backend.services.booking.api.routes import router as booking_router
     from backend.services.dispatch.api.routes import router as dispatch_router
     from backend.services.notification.api.endpoints import router as notification_router
+    from backend.services.pricing.api.routes import router as pricing_router
     from backend.services.realtime.api.routes import router as realtime_router
     from backend.services.realtime.events.consumers import init_realtime_consumers
     from backend.services.notification.events.consumers import init_notification_consumers
@@ -133,6 +134,7 @@ def _register_routes(application: FastAPI) -> None:
     application.include_router(booking_router, prefix="/api/v1")
     application.include_router(dispatch_router, prefix="/api/v1")
     application.include_router(notification_router, prefix="/api/v1")
+    application.include_router(pricing_router, prefix="/api/v1")
     application.include_router(realtime_router)
 
     # Initialize event consumers
