@@ -1,181 +1,143 @@
-"""
-AirLynk — Notification Service.
-
-Handles event routing, templating, and dispatching.
-"""
-
 import json
 import logging
-import uuid
-from string import Template
-from typing import Any
+from uuid import UUID
 
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.services.notification.models.notification import (
-    DeliveryStatus,
     NotificationChannel,
+    NotificationStatus,
+    NotificationType,
 )
 from backend.services.notification.providers.email import EmailProvider
 from backend.services.notification.providers.push import PushProvider
 from backend.services.notification.providers.sms import SMSProvider
 from backend.services.notification.repository.notification_repository import NotificationRepository
 from backend.services.notification.schemas.notification import NotificationCreate
-from backend.shared.cache.redis_client import get_redis_client
+from backend.shared.cache.redis_client import get_redis
+from backend.shared.database.session import get_db_session
 
 logger = logging.getLogger(__name__)
 
-# Registry of providers
-PROVIDERS = {
-    NotificationChannel.EMAIL: EmailProvider(),
-    NotificationChannel.SMS: SMSProvider(),
-    NotificationChannel.PUSH: PushProvider(),
-}
-
 
 class NotificationService:
-    def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-        self.repo = NotificationRepository(session)
-        self.redis = get_redis_client()
+    def __init__(self, repository: NotificationRepository):
+        self.repository = repository
+        self.providers = {
+            NotificationChannel.EMAIL: EmailProvider(),
+            NotificationChannel.SMS: SMSProvider(),
+            NotificationChannel.PUSH: PushProvider(),
+        }
 
-    async def _is_duplicate_event(self, event_id: str | None) -> bool:
-        if not event_id:
-            return False
-        # Use Redis to deduplicate
-        key = f"notify:dedup:{event_id}"
-        is_new = await self.redis.setnx(key, "1")
-        if is_new:
-            await self.redis.expire(key, 86400)  # 24 hours
-        return not is_new
+    async def get_user_notifications(self, user_id: UUID, limit: int = 50, offset: int = 0):
+        return await self.repository.list_notifications_for_user(user_id, limit, offset)
 
-    def _render_template(self, template_str: str, payload: dict[str, Any]) -> str:
-        if not template_str:
-            return ""
-        try:
-            return Template(template_str).safe_substitute(payload)
-        except Exception:
-            return template_str
+    async def mark_as_read(self, notification_id: UUID, user_id: UUID):
+        notification = await self.repository.get_notification(notification_id)
+        if not notification or notification.user_id != user_id:
+            return None
+        return await self.repository.mark_as_read(notification_id)
 
-    async def process_event(
-        self, event_name: str, payload: dict[str, Any], event_id: str | None = None
-    ) -> None:
-        """Process an incoming domain event and generate notifications."""
-        if await self._is_duplicate_event(event_id):
-            logger.info("Skipping duplicate event", extra={"event_id": event_id})
-            return
-
-        # Try to extract user_id
-        user_id_str = (
-            payload.get("user_id") or payload.get("customer_id") or payload.get("driver_id")
-        )
-        if not user_id_str:
-            logger.warning(f"No user_id found in event {event_name}")
-            return
-
-        user_id = uuid.UUID(user_id_str)
-
-        # We need to dispatch to multiple channels
-        # Get preferences
-        prefs = await self.repo.get_user_preferences(user_id)
-
-        channels_to_send = []
-        if prefs.email_enabled:
-            channels_to_send.append(NotificationChannel.EMAIL)
-        if prefs.sms_enabled:
-            channels_to_send.append(NotificationChannel.SMS)
-        if prefs.push_enabled:
-            channels_to_send.append(NotificationChannel.PUSH)
-
-        # Always send to WebSocket for active sessions
-        channels_to_send.append(NotificationChannel.WEBSOCKET)
-
-        # Base title/content fallback
-        base_title = f"New activity: {event_name}"
-        base_content = json.dumps(payload)
-
-        # Check for templates. If none, we use fallback.
-        # But for an MVP, we will generate the notification record first.
-        # We can try to look up an EMAIL template to form the base notification.
-        template = await self.repo.get_template(event_name, NotificationChannel.EMAIL)
-        if template:
-            base_title = self._render_template(template.subject_template or base_title, payload)
-            base_content = self._render_template(template.body_template, payload)
-
-        # 1. Create Notification record
-        notification = await self.repo.create_notification(
-            NotificationCreate(
-                user_id=user_id, title=base_title, content=base_content, metadata_payload=payload
-            )
-        )
-
-        # 2. Create delivery records and dispatch
-        from backend.services.notification.worker import deliver_notification
-
-        for channel in channels_to_send:
-            delivery = await self.repo.create_delivery(notification.id, channel)
-
-            # Enqueue celery task for async delivery
-            deliver_notification.delay(
-                delivery_id=str(delivery.id),
-                channel=channel.value,
-                recipient=str(
-                    user_id
-                ),  # We use user_id as recipient; in reality we'd lookup email/phone from users table
-                title=base_title,
-                content=base_content,
-                payload=payload,
-            )
-
-        await self.session.commit()
-
-    async def process_delivery(
+    async def generate_notifications(
         self,
-        delivery_id: uuid.UUID,
-        channel_str: str,
-        recipient: str,
-        title: str,
-        content: str,
-        payload: dict[str, Any],
-    ) -> None:
-        """Executed by Celery worker to perform the actual delivery."""
-        channel = NotificationChannel(channel_str)
+        user_id: UUID,
+        event_type: str,
+        context: dict,
+        event_id: str,
+        n_type: NotificationType = NotificationType.SYSTEM,
+    ):
+        """
+        Deduplicates, fans out, and generates notifications based on event type.
+        This runs inside Celery worker `process_notification_event`.
+        """
+        from backend.shared.cache.redis_client import get_redis_client
+        redis = get_redis_client()
+        lock_key = f"notification:dedup:{event_id}"
+        
+        # Deduplication check
+        if not await redis.setnx(lock_key, "1"):
+            logger.info(f"Duplicate event {event_id} skipped.")
+            return []
+        await redis.expire(lock_key, 3600)  # Lock for 1 hour
 
-        if channel == NotificationChannel.WEBSOCKET:
-            # WebSocket dispatch
-            from backend.services.realtime.websocket.manager import manager
+        # Load templates (Fallback if missing)
+        template = await self.repository.get_template(event_type)
+        if template:
+            channels = [NotificationChannel(c) for c in template.channels]
+            title = template.title_template.format(**context)
+            message = template.message_template.format(**context)
+        else:
+            # Default fallback for missing templates
+            channels = [NotificationChannel.IN_APP]
+            title = context.get("title", f"Event: {event_type}")
+            message = context.get("message", f"A new {event_type} occurred.")
 
-            await manager.broadcast_to_channel(
-                f"user:{recipient}",
-                json.dumps({"type": "NOTIFICATION", "title": title, "content": content}),
+        created_notifications = []
+        for channel in channels:
+            data = NotificationCreate(
+                user_id=user_id,
+                type=n_type,
+                channel=channel,
+                title=title,
+                message=message,
+                data=context,
+                event_id=event_id,
             )
-            await self.repo.update_delivery_status(
-                delivery_id, DeliveryStatus.SENT, increment_attempt=True
-            )
-            await self.session.commit()
+            # Create in database as PENDING
+            notif = await self.repository.create_notification(data)
+            created_notifications.append(notif)
+            
+        return created_notifications
+
+    async def deliver_notification(self, notification_id: UUID):
+        """
+        Actually delivers the notification.
+        This runs inside Celery worker `deliver_notification`.
+        """
+        notification = await self.repository.get_notification(notification_id)
+        if not notification or notification.status == NotificationStatus.DELIVERED:
             return
 
-        provider = PROVIDERS.get(channel)
-        if not provider:
-            logger.error(f"No provider configured for channel {channel}")
-            await self.repo.update_delivery_status(
-                delivery_id,
-                DeliveryStatus.FAILED,
-                error_message="No provider",
-                increment_attempt=True,
-            )
-            await self.session.commit()
-            return
+        await self.repository.update_status(notification_id, NotificationStatus.PROCESSING)
 
         try:
-            await provider.send(recipient, title, content, payload)
-            await self.repo.update_delivery_status(
-                delivery_id, DeliveryStatus.SENT, increment_attempt=True
-            )
-            await self.session.commit()
+            if notification.channel == NotificationChannel.IN_APP:
+                # Deliver via WebSockets (Redis Pub/Sub)
+                payload = {
+                    "type": "notification",
+                    "data": {
+                        "id": str(notification.id),
+                        "title": notification.title,
+                        "message": notification.message,
+                        "n_type": notification.type.value,
+                        "created_at": notification.created_at.isoformat(),
+                    }
+                }
+                redis = await get_redis()
+                await redis.publish(f"user_{notification.user_id}", json.dumps(payload))
+            else:
+                # Deliver via Mock Providers
+                provider = self.providers.get(notification.channel)
+                if provider:
+                    await provider.send(
+                        user_id=notification.user_id,
+                        title=notification.title,
+                        message=notification.message,
+                        data=notification.data,
+                    )
+                else:
+                    raise Exception(f"No provider found for channel {notification.channel}")
+
+            # Mark delivered
+            await self.repository.update_status(notification_id, NotificationStatus.DELIVERED)
+            logger.info(f"Notification {notification_id} DELIVERED.")
+            
         except Exception as e:
-            await self.repo.update_delivery_status(
-                delivery_id, DeliveryStatus.FAILED, error_message=str(e), increment_attempt=True
-            )
-            await self.session.commit()
-            raise  # Re-raise for celery retry
+            await self.repository.update_status(notification_id, NotificationStatus.FAILED, str(e))
+            logger.error(f"Notification {notification_id} FAILED: {str(e)}")
+            raise e
+
+
+async def get_notification_service(session: AsyncSession = Depends(get_db_session)) -> NotificationService:
+    return NotificationService(NotificationRepository(session))

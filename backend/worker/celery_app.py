@@ -55,6 +55,10 @@ celery_app.conf.update(
     task_reject_on_worker_lost=True,
 )
 
+import backend.services.dispatch.worker.tasks  # noqa
+import backend.services.pricing.worker.surge_tasks  # noqa
+import backend.services.notification.worker.notification_tasks  # noqa
+
 # Auto-discover task modules
 celery_app.autodiscover_tasks(
     [
@@ -88,6 +92,26 @@ from backend.shared.observability.tracing import setup_tracing
 def configure_worker_tracing(**kwargs: Any) -> None:
     """Initialise OpenTelemetry inside each Celery worker process."""
     setup_tracing()
+    
+    import asyncio
+    from backend.shared.database.session import init_db
+    from backend.shared.cache.redis_client import init_redis
+    
+    # Import all models to populate Base.metadata
+    from backend.services.auth.models import user  # noqa: F401
+    from backend.services.booking.models import booking, location  # noqa: F401
+    from backend.services.dispatch.models import dispatch  # noqa: F401
+    from backend.services.fleet.models import fleet  # noqa: F401
+    from backend.services.notification.models import notification  # noqa: F401
+    from backend.services.pricing.models import pricing  # noqa: F401
+
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    loop.run_until_complete(init_db())
+    loop.run_until_complete(init_redis())
 
 
 _task_start_times: dict[str, float] = {}

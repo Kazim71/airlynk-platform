@@ -1,45 +1,17 @@
-"""
-AirLynk — SMS Notification Provider.
-"""
-
+import asyncio
 import logging
-import time
-from typing import Any
+from uuid import UUID
 
-from backend.services.notification.providers.base import NotificationProvider
-from backend.shared.observability.metrics import (
-    NOTIFICATION_FAILURES_TOTAL,
-    NOTIFICATION_PROVIDER_LATENCY,
-    NOTIFICATION_SEND_TOTAL,
-)
+from backend.services.notification.providers.base import BaseNotificationProvider
 
 logger = logging.getLogger(__name__)
 
 
-class SMSProvider(NotificationProvider):
-    """Mock implementation of an SMS provider (e.g. Twilio, AWS SNS)."""
+class SMSProvider(BaseNotificationProvider):
+    """Mock SMS provider (e.g. Twilio)."""
 
-    async def send(
-        self, recipient: str, title: str, content: str, payload: dict[str, Any] | None = None
-    ) -> bool:
-        start_time = time.perf_counter()
-        try:
-            # --- MOCK IMPLEMENTATION ---
-            logger.info(
-                "Simulating SMS delivery",
-                extra={
-                    "channel": "SMS",
-                    "recipient": recipient,
-                    "content_length": len(content),
-                },
-            )
-
-            NOTIFICATION_SEND_TOTAL.labels(channel="sms").inc()
-            return True
-        except Exception as e:
-            NOTIFICATION_FAILURES_TOTAL.labels(channel="sms").inc()
-            logger.error(f"SMS delivery failed: {e}", exc_info=True)
-            raise
-        finally:
-            duration = time.perf_counter() - start_time
-            NOTIFICATION_PROVIDER_LATENCY.labels(channel="sms").observe(duration)
+    async def send(self, user_id: UUID, title: str, message: str, data: dict | None = None) -> bool:
+        logger.info(f"Delivering SMS to user {user_id} | Text: {message}")
+        # Simulate network latency
+        await asyncio.sleep(0.3)
+        return True

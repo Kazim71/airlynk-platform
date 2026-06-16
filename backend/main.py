@@ -91,7 +91,10 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # --- Middleware (order matters: outermost → innermost) ------------------
+    # --- OpenTelemetry -----------------------------------------------------
+    setup_tracing(app=application, settings=settings)
+
+    # --- Middleware (order matters: outermost -> innermost) ------------------
     application.add_middleware(PrometheusMiddleware)
     application.add_middleware(SecurityHeadersMiddleware)
     application.add_middleware(CorrelationIdMiddleware)
@@ -106,8 +109,9 @@ def create_app() -> FastAPI:
     # --- Exception handlers ------------------------------------------------
     register_exception_handlers(application)
 
-    # --- OpenTelemetry -----------------------------------------------------
-    setup_tracing(app=application, settings=settings)
+    @application.options("/{full_path:path}", include_in_schema=False)
+    async def global_options(full_path: str):
+        return {}
 
     # --- Routes ------------------------------------------------------------
     _register_routes(application)
@@ -120,11 +124,11 @@ def _register_routes(application: FastAPI) -> None:
     from backend.services.auth.api.routes import router as auth_router
     from backend.services.booking.api.routes import router as booking_router
     from backend.services.dispatch.api.routes import router as dispatch_router
-    from backend.services.notification.api.endpoints import router as notification_router
     from backend.services.pricing.api.routes import router as pricing_router
+    from backend.services.notification.api.routes import router as notification_router
+    from backend.services.notification.events.consumers import init_notification_consumers
     from backend.services.realtime.api.routes import router as realtime_router
     from backend.services.realtime.events.consumers import init_realtime_consumers
-    from backend.services.notification.events.consumers import init_notification_consumers
     from backend.shared.api.routes.health import router as health_router
     from backend.shared.api.routes.metrics import router as metrics_router
 
@@ -133,8 +137,8 @@ def _register_routes(application: FastAPI) -> None:
     application.include_router(auth_router, prefix="/api/v1")
     application.include_router(booking_router, prefix="/api/v1")
     application.include_router(dispatch_router, prefix="/api/v1")
-    application.include_router(notification_router, prefix="/api/v1")
     application.include_router(pricing_router, prefix="/api/v1")
+    application.include_router(notification_router, prefix="/api/v1")
     application.include_router(realtime_router)
 
     # Initialize event consumers

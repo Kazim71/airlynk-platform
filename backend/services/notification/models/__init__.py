@@ -3,21 +3,17 @@ AirLynk — Notification Models Package.
 """
 
 from backend.services.notification.models.notification import (
-    DeliveryStatus,
     Notification,
     NotificationChannel,
-    NotificationDelivery,
     NotificationStatus,
     NotificationTemplate,
-    UserNotificationPreference,
+    NotificationType,
 )
 
 __all__ = [
-    "DeliveryStatus",
     "Notification",
     "NotificationChannel",
-    "NotificationDelivery",
     "NotificationStatus",
     "NotificationTemplate",
-    "UserNotificationPreference",
+    "NotificationType",
 ]
