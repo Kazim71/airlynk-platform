@@ -11,18 +11,10 @@ export default function BookingsPage() {
     queryKey: ["bookings"],
     queryFn: async () => {
       // Mocked fallback if endpoint is unavailable
-      try {
         const res = await api.get("/bookings");
         return res.data;
-      } catch (err) {
-        return [
-          { id: "1", customer_id: "cust_abc", status: "pending", created_at: new Date().toISOString() },
-          { id: "2", customer_id: "cust_def", status: "completed", created_at: new Date().toISOString() },
-          { id: "3", customer_id: "cust_xyz", status: "cancelled", created_at: new Date().toISOString() },
-        ];
       }
-    }
-  });
+    });
 
   return (
     <Card>
@@ -50,10 +42,10 @@ export default function BookingsPage() {
                   <TableCell>{new Date(b.created_at).toLocaleString()}</TableCell>
                   <TableCell>
                     <Badge variant={
-                      b.status === "completed" ? "success" : 
-                      b.status === "cancelled" ? "destructive" : "default"
+                      b.booking_status === "completed" ? "success" : 
+                      b.booking_status === "cancelled" ? "destructive" : "default"
                     }>
-                      {b.status}
+                      {b.booking_status}
                     </Badge>
                   </TableCell>
                 </TableRow>

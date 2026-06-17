@@ -24,7 +24,7 @@ export function FareSimulator() {
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await api.post("/api/v1/pricing/estimate", data);
+      const response = await api.post("/pricing/estimate", data);
       return response.data;
     },
     onSuccess: (data) => {

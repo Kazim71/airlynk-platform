@@ -3,26 +3,25 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Activity, TrendingUp } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
 export function SurgeMonitor() {
-  // In a real application, this would connect to a WebSocket or polling endpoint
-  // to get real-time surge multipliers from the Redis cache.
-  const [surges, setSurges] = useState([
-    { city: "New York", multiplier: 1.0, activeBookings: 124, availableDrivers: 80 },
-    { city: "London", multiplier: 1.2, activeBookings: 89, availableDrivers: 60 },
-    { city: "San Francisco", multiplier: 1.8, activeBookings: 210, availableDrivers: 45 },
-  ]);
+  const { data: rules } = useQuery({
+    queryKey: ["pricing_rules"],
+    queryFn: async () => {
+      const res = await api.get("/pricing/rules");
+      return res.data;
+    },
+    refetchInterval: 30000,
+  });
 
-  useEffect(() => {
-    // Mocking real-time updates
-    const interval = setInterval(() => {
-      setSurges(prev => prev.map(s => ({
-        ...s,
-        multiplier: Math.max(1.0, s.multiplier + (Math.random() * 0.2 - 0.1))
-      })));
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  const surges = rules?.map((r: any) => ({
+    city: r.city,
+    multiplier: r.surge_multiplier,
+    activeBookings: 0,
+    availableDrivers: 0
+  })) || [];
 
   return (
     <Card className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white border-none shadow-xl">
@@ -34,12 +33,14 @@ export function SurgeMonitor() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4 mt-4">
-          {surges.map((surge) => (
+          {surges.length === 0 ? (
+            <div className="text-sm text-slate-400 text-center py-4">No active surge rules found.</div>
+          ) : surges.map((surge: any) => (
             <div key={surge.city} className="bg-white/10 p-4 rounded-lg flex flex-col gap-2">
               <div className="flex justify-between items-center">
                 <span className="font-semibold">{surge.city}</span>
                 <span className={`text-xl font-bold ${surge.multiplier >= 1.5 ? 'text-red-400' : surge.multiplier > 1.0 ? 'text-yellow-400' : 'text-green-400'}`}>
-                  {surge.multiplier.toFixed(2)}x
+                  {parseFloat(surge.multiplier).toFixed(2)}x
                 </span>
               </div>
               <div className="flex justify-between text-xs text-slate-300 mt-2">

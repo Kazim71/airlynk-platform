@@ -6,13 +6,28 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
 export default function DispatchPage() {
-  const [drivers, setDrivers] = useState<any[]>([
-    { id: "d1", lat: 40.7128, lng: -74.0060, status: "available" },
-    { id: "d2", lat: 40.7580, lng: -73.9855, status: "busy" },
-    { id: "d3", lat: 40.7829, lng: -73.9654, status: "available" }
-  ]);
+  const [drivers, setDrivers] = useState<any[]>([]);
+
+  const { data: bookings } = useQuery({
+    queryKey: ["bookings"],
+    queryFn: async () => {
+      const res = await api.get("/bookings");
+      return res.data;
+    }
+  });
+
+  const handleDispatch = async (bookingId: string) => {
+    try {
+      await api.post(`/dispatch/${bookingId}/start`);
+      alert("Dispatch triggered successfully");
+    } catch (e: any) {
+      alert(e.response?.data?.detail || "Failed to trigger dispatch");
+    }
+  };
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-8rem)] gap-6">
@@ -41,21 +56,24 @@ export default function DispatchPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow>
-                <TableCell className="font-medium">BK-001</TableCell>
-                <TableCell><Badge variant="warning">Pending</Badge></TableCell>
-                <TableCell><Button size="sm" variant="outline">Retry</Button></TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">BK-002</TableCell>
-                <TableCell><Badge variant="success">Assigned</Badge></TableCell>
-                <TableCell></TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">BK-003</TableCell>
-                <TableCell><Badge variant="destructive">Failed</Badge></TableCell>
-                <TableCell><Button size="sm" variant="outline">Retry</Button></TableCell>
-              </TableRow>
+              {bookings?.filter((b: any) => ["created", "confirmed", "payment_authorized", "dispatching"].includes(b.booking_status)).map((b: any) => (
+                <TableRow key={b.id}>
+                  <TableCell className="font-medium">{b.id.substring(0, 8)}</TableCell>
+                  <TableCell><Badge variant="warning">{b.booking_status}</Badge></TableCell>
+                  <TableCell>
+                    <Button size="sm" variant="outline" onClick={() => handleDispatch(b.id)}>Dispatch</Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {bookings?.filter((b: any) => ["failed"].includes(b.booking_status)).map((b: any) => (
+                <TableRow key={b.id}>
+                  <TableCell className="font-medium">{b.id.substring(0, 8)}</TableCell>
+                  <TableCell><Badge variant="destructive">{b.booking_status}</Badge></TableCell>
+                  <TableCell>
+                    <Button size="sm" variant="outline" onClick={() => handleDispatch(b.id)}>Retry</Button>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </CardContent>

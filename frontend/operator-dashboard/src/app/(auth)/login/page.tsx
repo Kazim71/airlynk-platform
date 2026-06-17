@@ -36,11 +36,17 @@ export default function LoginPage() {
       // Fetch user profile using token
       api.defaults.headers.common["Authorization"] = `Bearer ${data.access_token}`;
       try {
-        const meRes = await api.get("/auth/me");
+        const meRes = await api.get("/auth/me", {
+          headers: {
+            Authorization: `Bearer ${data.access_token}`,
+          },
+        });
         setAuth(data.access_token, meRes.data);
         router.push("/");
-      } catch (err) {
-        setError("Failed to fetch user profile.");
+      } catch (err: any) {
+        console.error("Login profile fetch error:", err);
+        const detail = err.response?.data?.detail || err.response?.data?.message || err.message;
+        setError(`Failed to fetch user profile: ${detail} (Status: ${err.response?.status || 'Unknown'})`);
       }
     },
     onError: () => {

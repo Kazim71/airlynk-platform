@@ -16,7 +16,8 @@ export default function DashboardOverview() {
   const { data: health, isLoading } = useQuery({
     queryKey: ["health"],
     queryFn: async () => {
-      const res = await api.get("/health");
+      // Use absolute URL since health is not under /api/v1
+      const res = await api.get("http://localhost:8000/health");
       return res.data.data;
     },
     refetchInterval: 30000,
@@ -35,17 +36,20 @@ export default function DashboardOverview() {
     };
   }, []);
 
-  // Mock data for the chart since prometheus querying is complex to implement raw on frontend
-  // without a backend proxy that translates PromQL to JSON.
-  const chartData = [
-    { time: '10:00', bookings: 400, dispatch: 240 },
-    { time: '10:30', bookings: 300, dispatch: 139 },
-    { time: '11:00', bookings: 200, dispatch: 980 },
-    { time: '11:30', bookings: 278, dispatch: 390 },
-    { time: '12:00', bookings: 189, dispatch: 480 },
-    { time: '12:30', bookings: 239, dispatch: 380 },
-    { time: '13:00', bookings: 349, dispatch: 430 },
-  ];
+  const { data: bookings } = useQuery({
+    queryKey: ["bookings"],
+    queryFn: async () => {
+      const res = await api.get("/bookings");
+      return res.data;
+    },
+    refetchInterval: 30000,
+  });
+
+  const activeBookingsCount = bookings?.filter((b: any) => 
+    b.booking_status !== 'completed' && b.booking_status !== 'cancelled' && b.booking_status !== 'failed'
+  ).length || 0;
+
+  const chartData: any[] = []; // Removed mock data, show empty state
 
   return (
     <div className="space-y-6">
@@ -70,8 +74,8 @@ export default function DashboardOverview() {
             <Car className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,245</div>
-            <p className="text-xs text-gray-500 mt-1">+12.5% from last hour</p>
+            <div className="text-2xl font-bold">N/A</div>
+            <p className="text-xs text-gray-500 mt-1">Live metrics unavailable</p>
           </CardContent>
         </Card>
         <Card>
@@ -80,8 +84,8 @@ export default function DashboardOverview() {
             <Users className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">842</div>
-            <p className="text-xs text-gray-500 mt-1">+4.2% from last hour</p>
+            <div className="text-2xl font-bold">{activeBookingsCount}</div>
+            <p className="text-xs text-gray-500 mt-1">Currently active rides</p>
           </CardContent>
         </Card>
         <Card>
@@ -90,8 +94,8 @@ export default function DashboardOverview() {
             <CheckCircle className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">98.2%</div>
-            <p className="text-xs text-gray-500 mt-1">Based on last 1000 trips</p>
+            <div className="text-2xl font-bold">N/A</div>
+            <p className="text-xs text-gray-500 mt-1">Live metrics unavailable</p>
           </CardContent>
         </Card>
       </div>
@@ -104,14 +108,18 @@ export default function DashboardOverview() {
           </CardHeader>
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <Line type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={2} />
-                <Line type="monotone" dataKey="dispatch" stroke="#8b5cf6" strokeWidth={2} />
-                <CartesianGrid stroke="#ccc" strokeDasharray="5 5" vertical={false} />
-                <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                <Tooltip />
-              </LineChart>
+              {chartData.length > 0 ? (
+                <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <Line type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={2} />
+                  <Line type="monotone" dataKey="dispatch" stroke="#8b5cf6" strokeWidth={2} />
+                  <CartesianGrid stroke="#ccc" strokeDasharray="5 5" vertical={false} />
+                  <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                </LineChart>
+              ) : (
+                <div className="flex h-full items-center justify-center text-gray-500">No chart data available</div>
+              )}
             </ResponsiveContainer>
           </CardContent>
         </Card>

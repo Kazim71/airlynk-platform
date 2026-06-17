@@ -37,7 +37,11 @@ class BookingStatusHistoryResponse(BaseModel):
 
 class BookingBase(BaseModel):
     pickup_location: str = Field(..., max_length=255)
+    pickup_lat: float = Field(..., ge=-90, le=90)
+    pickup_lng: float = Field(..., ge=-180, le=180)
     dropoff_location: str = Field(..., max_length=255)
+    dropoff_lat: float = Field(..., ge=-90, le=90)
+    dropoff_lng: float = Field(..., ge=-180, le=180)
     scheduled_time: datetime
     passenger_count: int = Field(default=1, ge=1, le=8)
 
@@ -48,7 +52,11 @@ class BookingCreate(BookingBase):
 
 class BookingUpdate(BaseModel):
     pickup_location: str | None = Field(None, max_length=255)
+    pickup_lat: float | None = Field(None, ge=-90, le=90)
+    pickup_lng: float | None = Field(None, ge=-180, le=180)
     dropoff_location: str | None = Field(None, max_length=255)
+    dropoff_lat: float | None = Field(None, ge=-90, le=90)
+    dropoff_lng: float | None = Field(None, ge=-180, le=180)
     scheduled_time: datetime | None = None
     passenger_count: int | None = Field(None, ge=1, le=8)
 
@@ -65,6 +73,10 @@ class BookingResponse(BookingBase):
     assigned_driver_id: uuid.UUID | None = None
     vehicle_id: uuid.UUID | None = None
     estimated_price: float
+    pickup_lat: float
+    pickup_lng: float
+    dropoff_lat: float
+    dropoff_lng: float
     created_at: datetime
     updated_at: datetime
 

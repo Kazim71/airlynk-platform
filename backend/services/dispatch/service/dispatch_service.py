@@ -127,8 +127,8 @@ class DispatchService:
 
             # 3. Match and score drivers. (Mock pickup coords for now)
             pickup_lat = 0.0
-            pickup_lon = 0.0
-            scored = self.engine.score_drivers(booking, active_drivers, pickup_lat, pickup_lon)
+            pickup_lng = 0.0
+            scored = self.engine.score_drivers(booking, active_drivers, pickup_lat, pickup_lng)
 
             # Select highest scoring driver that hasn't been pinged yet
             pinged_driver_ids = {a.driver_id for a in req.attempts}

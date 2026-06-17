@@ -123,10 +123,14 @@ def _register_routes(application: FastAPI) -> None:
     """Import and include all API routers."""
     from backend.services.auth.api.routes import router as auth_router
     from backend.services.booking.api.routes import router as booking_router
+    from backend.services.airports.api.routes import router as airports_router
+    from backend.services.geo.api.routes import router as geo_router
+    from backend.services.payments.api.routes import router as payments_router
     from backend.services.dispatch.api.routes import router as dispatch_router
     from backend.services.pricing.api.routes import router as pricing_router
     from backend.services.notification.api.routes import router as notification_router
     from backend.services.notification.events.consumers import init_notification_consumers
+    from backend.services.booking.events.consumers import init_booking_consumers
     from backend.services.realtime.api.routes import router as realtime_router
     from backend.services.realtime.events.consumers import init_realtime_consumers
     from backend.shared.api.routes.health import router as health_router
@@ -136,6 +140,9 @@ def _register_routes(application: FastAPI) -> None:
     application.include_router(metrics_router)
     application.include_router(auth_router, prefix="/api/v1")
     application.include_router(booking_router, prefix="/api/v1")
+    application.include_router(airports_router, prefix="/api/v1")
+    application.include_router(geo_router, prefix="/api/v1")
+    application.include_router(payments_router, prefix="/api/v1")
     application.include_router(dispatch_router, prefix="/api/v1")
     application.include_router(pricing_router, prefix="/api/v1")
     application.include_router(notification_router, prefix="/api/v1")
@@ -144,6 +151,7 @@ def _register_routes(application: FastAPI) -> None:
     # Initialize event consumers
     init_realtime_consumers()
     init_notification_consumers()
+    init_booking_consumers()
 
 
 # Module-level app instance — used by Uvicorn

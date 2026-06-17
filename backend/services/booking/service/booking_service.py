@@ -72,7 +72,7 @@ class BookingService:
                 raise NotFoundError("Booking not found")
 
             # State Machine validation
-            if booking.booking_status not in [BookingStatus.CREATED, BookingStatus.CONFIRMED]:
+            if booking.booking_status not in [BookingStatus.CREATED, BookingStatus.CONFIRMED, BookingStatus.PAYMENT_AUTHORIZED, BookingStatus.DISPATCHING]:
                 raise ConflictError(
                     f"Cannot assign driver to booking in state: {booking.booking_status}"
                 )
@@ -167,6 +167,25 @@ class BookingService:
         await self.redis.delete(f"active_booking:{booking.id}")
         await self.publisher.publish_booking_cancelled(booking.id, user_id, correlation_id)
         logger.info(f"Booking {booking.id} cancelled by {user_id}")
+        return booking
+
+    async def authorize_payment(self, booking_id: uuid.UUID) -> Booking:
+        """Handle payment authorization success."""
+        booking = await self.repo.get_booking_by_id(booking_id)
+        if not booking:
+            raise NotFoundError("Booking not found")
+        
+        # In a real app we'd pass correlation_id properly
+        if booking.booking_status in [BookingStatus.CREATED, BookingStatus.CONFIRMED]:
+            # We bypass repo.update_booking_status to provide a simple mock driver for this user user_id
+            # Actually, let's just use update_booking_status and pass the customer_id as user_id.
+            booking = await self.repo.update_booking_status(booking, BookingStatus.PAYMENT_AUTHORIZED, booking.customer_id)
+            await self.redis.setex(f"active_booking:{booking.id}", 3600, str(booking.booking_status))
+            logger.info(f"Payment authorized for booking {booking.id}")
+            
+            # Auto-transition to dispatching
+            booking = await self.repo.update_booking_status(booking, BookingStatus.DISPATCHING, booking.customer_id)
+            await self.redis.setex(f"active_booking:{booking.id}", 3600, str(booking.booking_status))
         return booking
 
     async def get_booking(self, booking_id: uuid.UUID) -> Booking:

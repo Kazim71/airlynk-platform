@@ -20,8 +20,12 @@ from backend.shared.database.base import Base, TimestampMixin
 class BookingStatus(enum.StrEnum):
     CREATED = "created"
     CONFIRMED = "confirmed"
+    PAYMENT_AUTHORIZED = "payment_authorized"
+    DISPATCHING = "dispatching"
     DRIVER_ASSIGNED = "driver_assigned"
-    DRIVER_ARRIVING = "driver_arriving"
+    DRIVER_EN_ROUTE = "driver_en_route"
+    DRIVER_ARRIVED = "driver_arrived"
+    PASSENGER_PICKED = "passenger_picked"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
@@ -46,7 +50,11 @@ class Booking(Base, TimestampMixin):
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     pickup_location: Mapped[str] = mapped_column(String(255), nullable=False)
+    pickup_lat: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False, server_default="0.0")
+    pickup_lng: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False, server_default="0.0")
     dropoff_location: Mapped[str] = mapped_column(String(255), nullable=False)
+    dropoff_lat: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False, server_default="0.0")
+    dropoff_lng: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False, server_default="0.0")
     scheduled_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
     )

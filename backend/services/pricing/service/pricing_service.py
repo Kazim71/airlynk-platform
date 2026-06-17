@@ -54,16 +54,16 @@ class PricingService:
         surge = await self.get_surge_multiplier(request.city)
         effective_surge = max(rule.surge_multiplier, surge)
 
-        base = rule.base_fare
-        distance_fare = rule.per_km_rate * request.estimated_distance_km
-        time_fare = rule.per_minute_rate * Decimal(request.estimated_duration_minutes)
-        airport_fee = rule.airport_fee if request.is_airport else Decimal("0.00")
+        base = rule.base_fare.quantize(Decimal("0.01"))
+        distance_fare = (rule.per_km_rate * request.estimated_distance_km).quantize(Decimal("0.01"))
+        time_fare = (rule.per_minute_rate * Decimal(request.estimated_duration_minutes)).quantize(Decimal("0.01"))
+        airport_fee = (rule.airport_fee if request.is_airport else Decimal("0.00")).quantize(Decimal("0.01"))
 
-        subtotal = base + distance_fare + time_fare
+        subtotal = (base + distance_fare + time_fare).quantize(Decimal("0.01"))
         if subtotal < rule.minimum_fare:
-            subtotal = rule.minimum_fare
+            subtotal = rule.minimum_fare.quantize(Decimal("0.01"))
 
-        total_estimate = (subtotal * effective_surge) + airport_fee
+        total_estimate = ((subtotal * effective_surge) + airport_fee).quantize(Decimal("0.01"))
 
         estimate = FareEstimate(
             booking_id=request.booking_id if request.booking_id else uuid.uuid4(),

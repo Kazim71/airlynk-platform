@@ -38,7 +38,11 @@ class BookingRepository:
         booking = Booking(
             customer_id=customer_id,
             pickup_location=data.pickup_location,
+            pickup_lat=data.pickup_lat,
+            pickup_lng=data.pickup_lng,
             dropoff_location=data.dropoff_location,
+            dropoff_lat=data.dropoff_lat,
+            dropoff_lng=data.dropoff_lng,
             scheduled_time=data.scheduled_time,
             passenger_count=data.passenger_count,
             estimated_price=estimated_price,

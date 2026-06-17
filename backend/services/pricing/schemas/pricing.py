@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class PricingRuleBase(BaseModel):
@@ -46,14 +46,24 @@ class PricingRuleResponse(PricingRuleBase):
     created_at: datetime
     updated_at: datetime
 
+    @field_validator(
+        'base_fare', 'per_km_rate', 'per_minute_rate', 'minimum_fare', 
+        'waiting_charge_per_minute', 'cancellation_fee', 'surge_multiplier', 'airport_fee', mode='before'
+    )
+    @classmethod
+    def round_decimals(cls, v):
+        if v is not None:
+            return round(Decimal(v), 2)
+        return v
+
     model_config = ConfigDict(from_attributes=True)
 
 
 class FareEstimateRequest(BaseModel):
     pickup_lat: float = Field(..., ge=-90, le=90)
-    pickup_lon: float = Field(..., ge=-180, le=180)
+    pickup_lng: float = Field(..., ge=-180, le=180)
     dropoff_lat: float = Field(..., ge=-90, le=90)
-    dropoff_lon: float = Field(..., ge=-180, le=180)
+    dropoff_lng: float = Field(..., ge=-180, le=180)
     city: str = Field(..., max_length=100)
     vehicle_type: str = Field(..., max_length=50)
     estimated_duration_minutes: int = Field(..., ge=1)
@@ -76,5 +86,15 @@ class FareEstimateResponse(BaseModel):
     subtotal: Decimal
     total_estimate: Decimal
     created_at: datetime | None = None
+
+    @field_validator(
+        'base_fare', 'distance_fare', 'time_fare', 'airport_fee', 
+        'surge_applied', 'subtotal', 'total_estimate', mode='before'
+    )
+    @classmethod
+    def round_decimals(cls, v):
+        if v is not None:
+            return round(Decimal(v), 2)
+        return v
 
     model_config = ConfigDict(from_attributes=True)

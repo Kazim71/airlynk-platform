@@ -11,7 +11,7 @@ export function PricingRulesTable() {
   const { data: rules, isLoading } = useQuery({
     queryKey: ["pricing-rules"],
     queryFn: async () => {
-      const response = await api.get("/api/v1/pricing/rules");
+      const response = await api.get("/pricing/rules");
       return response.data;
     },
   });

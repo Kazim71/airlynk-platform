@@ -39,7 +39,7 @@ class MatchingEngine:
 
     @staticmethod
     def score_drivers(
-        booking: Booking, drivers: list[dict], pickup_lat: float, pickup_lon: float  # type: ignore
+        booking: Booking, drivers: list[dict], pickup_lat: float, pickup_lng: float  # type: ignore
     ) -> list[DriverScore]:
         """
         Score a list of drivers based on distance to the pickup location.
@@ -54,7 +54,7 @@ class MatchingEngine:
             d_lon = d.get("longitude", 0.0)
             driver_id = UUID(d["driver_id"])
 
-            distance_km = MatchingEngine.calculate_distance(pickup_lat, pickup_lon, d_lat, d_lon)
+            distance_km = MatchingEngine.calculate_distance(pickup_lat, pickup_lng, d_lat, d_lon)
 
             # Score logic: Closer is better. Base score 100, minus 5 points per km.
             score = max(0.0, 100.0 - (distance_km * 5.0))
