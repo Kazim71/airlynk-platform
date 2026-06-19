@@ -1,7 +1,10 @@
 """
 AirLynk — Dispatch API Routes.
+
+All dispatch endpoints are protected by JWT + RBAC.
 """
 
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
@@ -17,6 +20,7 @@ from backend.services.fleet.repository.fleet_repository import FleetRepository
 from backend.shared.cache.redis_client import get_redis
 from backend.shared.database.session import get_db_session
 from backend.shared.exceptions.handlers import ValidationError
+from backend.shared.middleware.rbac import Role, require_roles
 
 router = APIRouter(prefix="/dispatch", tags=["dispatch"])
 
@@ -36,6 +40,7 @@ def get_dispatch_service(  # type: ignore
 @router.post("/availability", status_code=status.HTTP_200_OK)
 async def update_availability(
     update: DriverAvailabilityUpdate,
+    current_user: dict[str, Any] = Depends(require_roles(Role.OPERATOR, Role.PLATFORM_ADMIN)),
     service: DispatchService = Depends(get_dispatch_service),
 ) -> dict:  # type: ignore
     """Update driver online/offline status."""
@@ -55,11 +60,11 @@ async def update_availability(
 async def submit_dispatch_decision(
     decision: DispatchDecision,
     background_tasks: BackgroundTasks,
+    current_user: dict[str, Any] = Depends(require_roles(Role.OPERATOR, Role.DRIVER, Role.PLATFORM_ADMIN)),
     service: DispatchService = Depends(get_dispatch_service),
 ) -> dict:  # type: ignore
     """Submit a driver's decision (accept/reject) for an assignment offer."""
     try:
-        # Run in background to avoid blocking the API response
         background_tasks.add_task(
             service.handle_driver_decision, decision.attempt_id, decision.accepted
         )
@@ -72,6 +77,7 @@ async def submit_dispatch_decision(
 async def trigger_manual_dispatch(
     booking_id: UUID,
     background_tasks: BackgroundTasks,
+    current_user: dict[str, Any] = Depends(require_roles(Role.OPERATOR, Role.PLATFORM_ADMIN)),
     service: DispatchService = Depends(get_dispatch_service),
 ) -> dict:  # type: ignore
     """Manually trigger the dispatch process for a booking."""

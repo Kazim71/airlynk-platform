@@ -20,7 +20,7 @@ async def create_intent(
 ):
     """Create a new payment intent."""
     service = PaymentService(session)
-    return await service.create_intent(uuid.UUID(user["user_id"]), req)
+    return await service.create_intent(uuid.UUID(user["sub"]), req)
 
 @router.post("/webhook/mock")
 async def mock_webhook(

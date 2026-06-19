@@ -30,7 +30,7 @@ def get_booking_service(
     redis: Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> BookingService:
     repo = BookingRepository(session)
-    return BookingService(repo, redis)
+    return BookingService(repo, redis, db_session=session)
 
 
 @router.post("", response_model=BookingResponse, status_code=201)

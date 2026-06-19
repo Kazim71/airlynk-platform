@@ -2,19 +2,26 @@
 AirLynk — Booking Service.
 
 Implements the Booking state machine, Redis caching, and orchestration.
+Integrates with the Pricing Engine for fare calculation.
 """
 
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.services.booking.events.publishers import BookingEventPublisher
 from backend.services.booking.models.booking import Booking, BookingStatus, TripStatus
+from backend.services.pricing.schemas.pricing import FareEstimateRequest
+from backend.services.pricing.service.pricing_service import PricingService
+from backend.services.fleet.repository.fleet_repository import FleetRepository
 from backend.shared.exceptions.handlers import ConflictError, NotFoundError
 from backend.shared.observability.metrics import BOOKINGS_COMPLETED_TOTAL, BOOKINGS_CREATED_TOTAL
 
@@ -28,17 +35,19 @@ logger = logging.getLogger(__name__)
 class BookingService:
     """Business logic layer for Bookings."""
 
-    def __init__(self, repo: BookingRepository, redis: Redis) -> None:  # type: ignore
+    def __init__(self, repo: BookingRepository, redis: Redis, db_session: AsyncSession) -> None:  # type: ignore
         self.repo = repo
         self.redis = redis
+        self.db_session = db_session
+        self.fleet_repo = FleetRepository(db_session)
         self.publisher = BookingEventPublisher()
 
     async def create_booking(
         self, customer_id: uuid.UUID, data: BookingCreate, correlation_id: uuid.UUID
     ) -> Booking:
-        """Create a new booking."""
-        # Domain logic: Calculate price (mocked)
-        estimated_price = 45.00 * data.passenger_count
+        """Create a new booking with pricing from the Pricing Engine."""
+        # Use the Pricing Engine to calculate the fare
+        estimated_price = await self._calculate_fare(data)
 
         booking = await self.repo.create_booking(customer_id, data, estimated_price)
 
@@ -48,8 +57,52 @@ class BookingService:
 
         await self.publisher.publish_booking_created(booking.id, customer_id, correlation_id)
         BOOKINGS_CREATED_TOTAL.inc()
-        logger.info(f"Booking {booking.id} created by customer {customer_id}")
+        logger.info(f"Booking {booking.id} created by customer {customer_id} | fare=₹{estimated_price}")
         return booking
+
+    async def _calculate_fare(self, data: BookingCreate) -> float:
+        """Delegate fare calculation to the Pricing Engine.
+
+        Determines city from the pickup location string and uses the geo
+        coordinates for distance/duration estimation.
+        """
+        try:
+            # Extract city from pickup_location (format: "City - Airport Name")
+            city = data.pickup_location.split(" - ")[0].strip() if " - " in data.pickup_location else data.pickup_location.strip()
+
+            # Use Haversine-based distance estimate (same as geo service)
+            from backend.services.geo.schemas.geo import RouteRequest
+            from backend.services.geo.service.geo_service import GeoService
+            geo_svc = GeoService()
+            geo_result = await geo_svc.estimate_route(RouteRequest(
+                pickup_lat=data.pickup_lat,
+                pickup_lng=data.pickup_lng,
+                dropoff_lat=data.dropoff_lat,
+                dropoff_lng=data.dropoff_lng,
+            ))
+            distance_km = Decimal(str(geo_result.distance_km))
+            duration_mins = geo_result.duration_minutes
+
+            # Call pricing engine
+            pricing_svc = PricingService(self.db_session)
+            fare_request = FareEstimateRequest(
+                pickup_lat=data.pickup_lat,
+                pickup_lng=data.pickup_lng,
+                dropoff_lat=data.dropoff_lat,
+                dropoff_lng=data.dropoff_lng,
+                city=city,
+                vehicle_type="sedan",  # Default; can be extended with BookingCreate field
+                estimated_duration_minutes=max(duration_mins, 1),
+                estimated_distance_km=max(distance_km, Decimal("0.1")),
+                is_airport=True,  # AirLynk is an airport transfer service
+            )
+            fare_response = await pricing_svc.calculate_fare(fare_request)
+            return float(fare_response.total_estimate)
+
+        except Exception as e:
+            # If pricing fails (no rules, etc.), use a safe fallback
+            logger.warning(f"Pricing engine failed, using fallback: {e}")
+            return 500.00  # Safe minimum fallback for airport transfers
 
     async def assign_driver(
         self,
@@ -93,12 +146,16 @@ class BookingService:
             await self.redis.delete(lock_key)
 
     async def start_trip(
-        self, booking_id: uuid.UUID, driver_id: uuid.UUID, correlation_id: uuid.UUID
+        self, booking_id: uuid.UUID, user_id: uuid.UUID, correlation_id: uuid.UUID
     ) -> Booking:
         """Start the trip for a booking."""
         booking = await self.repo.get_booking_by_id(booking_id)
         if not booking:
             raise NotFoundError("Booking not found")
+
+        # Resolve Fleet Driver from User ID
+        fleet_driver = await self.fleet_repo.get_driver_by_user_id(user_id)
+        driver_id = fleet_driver.id if fleet_driver else user_id
 
         if booking.assigned_driver_id != driver_id:
             raise ConflictError("Driver is not assigned to this booking")
@@ -119,12 +176,16 @@ class BookingService:
         return booking
 
     async def complete_trip(
-        self, booking_id: uuid.UUID, driver_id: uuid.UUID, correlation_id: uuid.UUID
+        self, booking_id: uuid.UUID, user_id: uuid.UUID, correlation_id: uuid.UUID
     ) -> Booking:
         """Complete the trip for a booking."""
         booking = await self.repo.get_booking_by_id(booking_id)
         if not booking:
             raise NotFoundError("Booking not found")
+
+        # Resolve Fleet Driver from User ID
+        fleet_driver = await self.fleet_repo.get_driver_by_user_id(user_id)
+        driver_id = fleet_driver.id if fleet_driver else user_id
 
         if booking.assigned_driver_id != driver_id:
             raise ConflictError("Driver is not assigned to this booking")
@@ -175,10 +236,7 @@ class BookingService:
         if not booking:
             raise NotFoundError("Booking not found")
         
-        # In a real app we'd pass correlation_id properly
         if booking.booking_status in [BookingStatus.CREATED, BookingStatus.CONFIRMED]:
-            # We bypass repo.update_booking_status to provide a simple mock driver for this user user_id
-            # Actually, let's just use update_booking_status and pass the customer_id as user_id.
             booking = await self.repo.update_booking_status(booking, BookingStatus.PAYMENT_AUTHORIZED, booking.customer_id)
             await self.redis.setex(f"active_booking:{booking.id}", 3600, str(booking.booking_status))
             logger.info(f"Payment authorized for booking {booking.id}")
