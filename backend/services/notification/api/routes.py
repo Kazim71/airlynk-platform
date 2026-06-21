@@ -26,7 +26,7 @@ async def get_notification_history(
     """Retrieve notification history for the authenticated user."""
     repo = NotificationRepository(db)
     user_id = uuid.UUID(current_user["sub"])
-    notifications = await repo.get_user_notifications(user_id, limit=limit, offset=offset)
+    notifications = await repo.list_notifications_for_user(user_id, limit=limit, offset=offset)
     return notifications
 
 

@@ -56,7 +56,7 @@ celery_app.conf.update(
 )
 
 import backend.services.dispatch.worker.tasks  # noqa
-import backend.services.pricing.worker.surge_tasks  # noqa
+import backend.services.pricing.worker.surge_tasks
 import backend.services.notification.worker.notification_tasks  # noqa
 
 # Auto-discover task modules
@@ -92,18 +92,18 @@ from backend.shared.observability.tracing import setup_tracing
 def configure_worker_tracing(**kwargs: Any) -> None:
     """Initialise OpenTelemetry inside each Celery worker process."""
     setup_tracing()
-    
+
     import asyncio
-    from backend.shared.database.session import init_db
-    from backend.shared.cache.redis_client import init_redis
-    
+
     # Import all models to populate Base.metadata
     from backend.services.auth.models import user  # noqa: F401
-    from backend.services.booking.models import booking, location  # noqa: F401
+    from backend.services.booking.models import booking  # noqa: F401
     from backend.services.dispatch.models import dispatch  # noqa: F401
     from backend.services.fleet.models import fleet  # noqa: F401
     from backend.services.notification.models import notification  # noqa: F401
     from backend.services.pricing.models import pricing  # noqa: F401
+    from backend.shared.cache.redis_client import init_redis
+    from backend.shared.database.session import init_db
 
     try:
         loop = asyncio.get_event_loop()

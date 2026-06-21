@@ -4,6 +4,7 @@ AirLynk — Matching Engine.
 
 import math
 from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
 from backend.services.booking.models.booking import Booking
@@ -39,7 +40,10 @@ class MatchingEngine:
 
     @staticmethod
     def score_drivers(
-        booking: Booking, drivers: list[dict], pickup_lat: float, pickup_lng: float  # type: ignore
+        booking: Booking,
+        drivers: list[dict[str, Any]],
+        pickup_lat: float,
+        pickup_lng: float,
     ) -> list[DriverScore]:
         """
         Score a list of drivers based on distance to the pickup location.

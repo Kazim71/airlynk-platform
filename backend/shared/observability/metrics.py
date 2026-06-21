@@ -190,7 +190,8 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         # Normalise path to avoid high-cardinality explosion
-        path = request.url.path
+        route = request.scope.get("route")
+        path = route.path if route else request.url.path
         method = request.method
 
         ACTIVE_REQUESTS.inc()

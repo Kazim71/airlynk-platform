@@ -11,11 +11,12 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # --- Driver Schemas ---
+
 
 class DriverCreate(BaseModel):
     """Create a new driver profile linked to an existing user."""
+
     user_id: uuid.UUID
     license_number: str = Field(..., min_length=3, max_length=50)
     is_active: bool = Field(default=True)
@@ -24,6 +25,7 @@ class DriverCreate(BaseModel):
 
 class DriverUpdate(BaseModel):
     """Partial update for a driver."""
+
     license_number: str | None = Field(None, min_length=3, max_length=50)
     is_active: bool | None = None
     is_available: bool | None = None
@@ -31,6 +33,7 @@ class DriverUpdate(BaseModel):
 
 class DriverResponse(BaseModel):
     """Driver response including vehicles."""
+
     id: uuid.UUID
     user_id: uuid.UUID
     license_number: str
@@ -45,8 +48,10 @@ class DriverResponse(BaseModel):
 
 # --- Vehicle Schemas ---
 
+
 class VehicleCreate(BaseModel):
     """Create a new vehicle assigned to a driver."""
+
     driver_id: uuid.UUID
     make: str = Field(..., min_length=1, max_length=100)
     model: str = Field(..., min_length=1, max_length=100)
@@ -55,6 +60,7 @@ class VehicleCreate(BaseModel):
 
 class VehicleUpdate(BaseModel):
     """Partial update for a vehicle."""
+
     make: str | None = Field(None, min_length=1, max_length=100)
     model: str | None = Field(None, min_length=1, max_length=100)
     license_plate: str | None = Field(None, min_length=1, max_length=50)
@@ -62,6 +68,7 @@ class VehicleUpdate(BaseModel):
 
 class VehicleResponse(BaseModel):
     """Vehicle response."""
+
     id: uuid.UUID
     driver_id: uuid.UUID
     make: str

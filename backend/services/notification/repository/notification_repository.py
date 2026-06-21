@@ -1,12 +1,13 @@
+from datetime import UTC, datetime
 from uuid import UUID
-from datetime import datetime, timezone
-from sqlalchemy import select, update
+
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.services.notification.models.notification import (
     Notification,
-    NotificationTemplate,
     NotificationStatus,
+    NotificationTemplate,
 )
 from backend.services.notification.schemas.notification import NotificationCreate
 
@@ -24,7 +25,9 @@ class NotificationRepository:
     async def get_notification(self, notification_id: UUID) -> Notification | None:
         return await self.session.get(Notification, notification_id)
 
-    async def list_notifications_for_user(self, user_id: UUID, limit: int = 50, offset: int = 0) -> list[Notification]:
+    async def list_notifications_for_user(
+        self, user_id: UUID, limit: int = 50, offset: int = 0
+    ) -> list[Notification]:
         stmt = (
             select(Notification)
             .where(Notification.user_id == user_id)
@@ -35,7 +38,9 @@ class NotificationRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def update_status(self, notification_id: UUID, status: NotificationStatus, error_message: str | None = None) -> None:
+    async def update_status(
+        self, notification_id: UUID, status: NotificationStatus, error_message: str | None = None
+    ) -> None:
         stmt = (
             update(Notification)
             .where(Notification.id == notification_id)
@@ -43,11 +48,18 @@ class NotificationRepository:
         )
         await self.session.execute(stmt)
 
-    async def mark_as_read(self, notification_id: UUID) -> Notification | None:
+    async def get_unread_count(self, user_id: UUID) -> int:
+        stmt = select(func.count(Notification.id)).where(
+            Notification.user_id == user_id, Notification.read_at.is_(None)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one()
+
+    async def mark_as_read(self, notification_id: UUID, user_id: UUID) -> Notification | None:
         stmt = (
             update(Notification)
-            .where(Notification.id == notification_id)
-            .values(read_at=datetime.now(timezone.utc))
+            .where(Notification.id == notification_id, Notification.user_id == user_id)
+            .values(read_at=datetime.now(UTC))
             .returning(Notification)
         )
         result = await self.session.execute(stmt)

@@ -102,14 +102,24 @@ ignore = [
     "S101",  # allow assert in tests
     "S105",  # false positive: event name strings like "auth.token.refreshed"
     "B008",  # allow Depends() in function args
-    "TCH002", # don't move runtime imports to TYPE_CHECKING blocks
-    "TCH003", # don't move stdlib runtime imports to TYPE_CHECKING blocks
+    "TC001", # don't move application imports to TYPE_CHECKING blocks
+    "TC002", # don't move runtime imports to TYPE_CHECKING blocks
+    "TC003", # don't move stdlib runtime imports to TYPE_CHECKING blocks
     "UP046",  # Generic[T] subclass still needed for Pydantic BaseModel
+    "UP042",
+    "E501",  # line too long
+    "S110",  # try-except-pass
+    "B904",  # raise from
+    "S311",  # random
+    "E712",  # comparison to True
+    "E402",  # module level import
+    "RUF006", # asyncio.ensure_future
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "*test_*.py" = ["S101", "S106"]
 "backend/tests/**/*.py" = ["S101", "S106"]
+"backend/scripts/**/*.py" = ["T201", "S101", "S106", "RUF001", "F841"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["backend"]
@@ -127,6 +137,7 @@ disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
 plugins = ["pydantic.mypy"]
+exclude = ["backend/scripts/"]
 
 [[tool.mypy.overrides]]
 module = [

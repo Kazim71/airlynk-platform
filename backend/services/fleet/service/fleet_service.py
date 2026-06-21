@@ -9,8 +9,6 @@ from __future__ import annotations
 import logging
 import uuid
 
-from fastapi import HTTPException
-
 from backend.services.fleet.models.fleet import Driver, Vehicle
 from backend.services.fleet.repository.fleet_repository import FleetRepository
 from backend.services.fleet.schemas.fleet import (

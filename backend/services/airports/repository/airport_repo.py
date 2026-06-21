@@ -1,12 +1,14 @@
 """
 AirLynk — Airport Repository.
 """
-import uuid
-from typing import Sequence
+
+from collections.abc import Sequence
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.services.airports.models.airport import Airport
+
 
 class AirportRepository:
     """Data access for Airports."""
@@ -26,11 +28,15 @@ class AirportRepository:
 
     async def search(self, query: str) -> Sequence[Airport]:
         search_term = f"%{query}%"
-        stmt = select(Airport).where(
-            Airport.is_active == True,
-            (Airport.code.ilike(search_term)) | 
-            (Airport.city.ilike(search_term)) | 
-            (Airport.name.ilike(search_term))
-        ).order_by(Airport.city)
+        stmt = (
+            select(Airport)
+            .where(
+                Airport.is_active == True,
+                (Airport.code.ilike(search_term))
+                | (Airport.city.ilike(search_term))
+                | (Airport.name.ilike(search_term)),
+            )
+            .order_by(Airport.city)
+        )
         result = await self.session.execute(stmt)
         return result.scalars().all()

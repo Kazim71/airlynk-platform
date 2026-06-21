@@ -6,9 +6,11 @@ import json
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect, status
 from opentelemetry import trace
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.services.booking.repository.booking_repository import BookingRepository
 from backend.services.realtime.schemas.tracking import LocationUpdate
 from backend.services.realtime.service.tracking_service import (
     CHANNEL_BOOKING_PREFIX,
@@ -17,6 +19,7 @@ from backend.services.realtime.service.tracking_service import (
     TrackingService,
 )
 from backend.services.realtime.websocket.manager import manager
+from backend.shared.database.session import get_db_session
 from backend.shared.exceptions.handlers import AuthenticationError
 from backend.shared.security.jwt_handler import decode_token
 
@@ -92,6 +95,7 @@ async def booking_websocket(  # type: ignore
     websocket: WebSocket,
     booking_id: UUID,
     token: str = Query(...),
+    session: AsyncSession = Depends(get_db_session),
 ):
     """
     WebSocket endpoint for a specific booking.
@@ -99,11 +103,20 @@ async def booking_websocket(  # type: ignore
     """
     try:
         payload = await get_token_payload(token)
-        # For simplicity in this demo, we ensure the user is authenticated.
-        # In a strict implementation, we'd query the DB to ensure this user owns the booking.
-        if not payload.get("sub"):
+        user_id = payload.get("sub")
+        role = payload.get("role")
+
+        if not user_id:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
+
+        # Check ownership for customers
+        if role == "customer":
+            repo = BookingRepository(session)
+            booking = await repo.get_booking_by_id(booking_id)
+            if not booking or str(booking.customer_id) != str(user_id):
+                await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+                return
     except AuthenticationError:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return

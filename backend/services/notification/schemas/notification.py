@@ -1,7 +1,8 @@
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from backend.services.notification.models.notification import (
     NotificationChannel,
@@ -16,7 +17,7 @@ class NotificationBase(BaseModel):
     channel: NotificationChannel
     title: str
     message: str
-    data: dict | None = None
+    data: dict[str, Any] | None = None
     event_id: str | None = None
 
 

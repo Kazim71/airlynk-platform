@@ -53,8 +53,12 @@ class Booking(Base, TimestampMixin):
     pickup_lat: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False, server_default="0.0")
     pickup_lng: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False, server_default="0.0")
     dropoff_location: Mapped[str] = mapped_column(String(255), nullable=False)
-    dropoff_lat: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False, server_default="0.0")
-    dropoff_lng: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False, server_default="0.0")
+    dropoff_lat: Mapped[float] = mapped_column(
+        Numeric(10, 6), nullable=False, server_default="0.0"
+    )
+    dropoff_lng: Mapped[float] = mapped_column(
+        Numeric(10, 6), nullable=False, server_default="0.0"
+    )
     scheduled_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
     )

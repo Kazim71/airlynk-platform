@@ -1,11 +1,13 @@
 import json
 import logging
+from typing import Any
 from uuid import UUID
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.services.notification.models.notification import (
+    Notification,
     NotificationChannel,
     NotificationStatus,
     NotificationType,
@@ -15,14 +17,14 @@ from backend.services.notification.providers.push import PushProvider
 from backend.services.notification.providers.sms import SMSProvider
 from backend.services.notification.repository.notification_repository import NotificationRepository
 from backend.services.notification.schemas.notification import NotificationCreate
-from backend.shared.cache.redis_client import get_redis
+from backend.shared.cache.redis_client import get_redis_client
 from backend.shared.database.session import get_db_session
 
 logger = logging.getLogger(__name__)
 
 
 class NotificationService:
-    def __init__(self, repository: NotificationRepository):
+    def __init__(self, repository: NotificationRepository) -> None:
         self.repository = repository
         self.providers = {
             NotificationChannel.EMAIL: EmailProvider(),
@@ -30,31 +32,34 @@ class NotificationService:
             NotificationChannel.PUSH: PushProvider(),
         }
 
-    async def get_user_notifications(self, user_id: UUID, limit: int = 50, offset: int = 0):
+    async def get_user_notifications(
+        self, user_id: UUID, limit: int = 50, offset: int = 0
+    ) -> list[Notification]:
         return await self.repository.list_notifications_for_user(user_id, limit, offset)
 
-    async def mark_as_read(self, notification_id: UUID, user_id: UUID):
+    async def mark_as_read(self, notification_id: UUID, user_id: UUID) -> Notification | None:
         notification = await self.repository.get_notification(notification_id)
         if not notification or notification.user_id != user_id:
             return None
-        return await self.repository.mark_as_read(notification_id)
+        return await self.repository.mark_as_read(notification_id, user_id)
 
     async def generate_notifications(
         self,
         user_id: UUID,
         event_type: str,
-        context: dict,
+        context: dict[str, Any],
         event_id: str,
         n_type: NotificationType = NotificationType.SYSTEM,
-    ):
+    ) -> list[Notification]:
         """
         Deduplicates, fans out, and generates notifications based on event type.
         This runs inside Celery worker `process_notification_event`.
         """
         from backend.shared.cache.redis_client import get_redis_client
+
         redis = get_redis_client()
         lock_key = f"notification:dedup:{event_id}"
-        
+
         # Deduplication check
         if not await redis.setnx(lock_key, "1"):
             logger.info(f"Duplicate event {event_id} skipped.")
@@ -87,10 +92,10 @@ class NotificationService:
             # Create in database as PENDING
             notif = await self.repository.create_notification(data)
             created_notifications.append(notif)
-            
+
         return created_notifications
 
-    async def deliver_notification(self, notification_id: UUID):
+    async def deliver_notification(self, notification_id: UUID) -> None:
         """
         Actually delivers the notification.
         This runs inside Celery worker `deliver_notification`.
@@ -112,9 +117,9 @@ class NotificationService:
                         "message": notification.message,
                         "n_type": notification.type.value,
                         "created_at": notification.created_at.isoformat(),
-                    }
+                    },
                 }
-                redis = await get_redis()
+                redis = get_redis_client()
                 await redis.publish(f"user_{notification.user_id}", json.dumps(payload))
             else:
                 # Deliver via Mock Providers
@@ -132,12 +137,14 @@ class NotificationService:
             # Mark delivered
             await self.repository.update_status(notification_id, NotificationStatus.DELIVERED)
             logger.info(f"Notification {notification_id} DELIVERED.")
-            
+
         except Exception as e:
             await self.repository.update_status(notification_id, NotificationStatus.FAILED, str(e))
-            logger.error(f"Notification {notification_id} FAILED: {str(e)}")
+            logger.error(f"Notification {notification_id} FAILED: {e!s}")
             raise e
 
 
-async def get_notification_service(session: AsyncSession = Depends(get_db_session)) -> NotificationService:
+async def get_notification_service(
+    session: AsyncSession = Depends(get_db_session),
+) -> NotificationService:
     return NotificationService(NotificationRepository(session))

@@ -17,6 +17,7 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+from backend.services.airports.models.airport import *  # noqa: F403
 
 # -- Import all ORM models here so metadata is populated -------------------
 from backend.services.auth.models.user import *  # noqa: F403
@@ -24,9 +25,8 @@ from backend.services.booking.models.booking import *  # noqa: F403
 from backend.services.dispatch.models.dispatch import *  # noqa: F403
 from backend.services.fleet.models.fleet import *  # noqa: F403
 from backend.services.notification.models.notification import *  # noqa: F403
-from backend.services.pricing.models.pricing import *  # noqa: F403
-from backend.services.airports.models.airport import *  # noqa: F403
 from backend.services.payments.models.payment import *  # noqa: F403
+from backend.services.pricing.models.pricing import *  # noqa: F403
 from backend.shared.config.settings import get_settings
 from backend.shared.database.base import Base
 

@@ -1,11 +1,14 @@
 """
 AirLynk — Payment Repository.
 """
+
 import uuid
-from typing import Sequence
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from backend.services.payments.models.payment import PaymentIntent, Transaction, PaymentStatus
+
+from backend.services.payments.models.payment import PaymentIntent, PaymentStatus, Transaction
+
 
 class PaymentRepository:
     def __init__(self, session: AsyncSession):
@@ -22,7 +25,9 @@ class PaymentRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def update_intent_status(self, intent: PaymentIntent, status: PaymentStatus) -> PaymentIntent:
+    async def update_intent_status(
+        self, intent: PaymentIntent, status: PaymentStatus
+    ) -> PaymentIntent:
         intent.status = status
         self.session.add(intent)
         await self.session.commit()

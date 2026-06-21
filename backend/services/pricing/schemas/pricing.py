@@ -7,6 +7,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -47,11 +48,18 @@ class PricingRuleResponse(PricingRuleBase):
     updated_at: datetime
 
     @field_validator(
-        'base_fare', 'per_km_rate', 'per_minute_rate', 'minimum_fare', 
-        'waiting_charge_per_minute', 'cancellation_fee', 'surge_multiplier', 'airport_fee', mode='before'
+        "base_fare",
+        "per_km_rate",
+        "per_minute_rate",
+        "minimum_fare",
+        "waiting_charge_per_minute",
+        "cancellation_fee",
+        "surge_multiplier",
+        "airport_fee",
+        mode="before",
     )
     @classmethod
-    def round_decimals(cls, v):
+    def round_decimals(cls: type[Any], v: Any) -> Any:
         if v is not None:
             return round(Decimal(v), 2)
         return v
@@ -88,11 +96,17 @@ class FareEstimateResponse(BaseModel):
     created_at: datetime | None = None
 
     @field_validator(
-        'base_fare', 'distance_fare', 'time_fare', 'airport_fee', 
-        'surge_applied', 'subtotal', 'total_estimate', mode='before'
+        "base_fare",
+        "distance_fare",
+        "time_fare",
+        "airport_fee",
+        "surge_applied",
+        "subtotal",
+        "total_estimate",
+        mode="before",
     )
     @classmethod
-    def round_decimals(cls, v):
+    def round_decimals(cls: type[Any], v: Any) -> Any:
         if v is not None:
             return round(Decimal(v), 2)
         return v

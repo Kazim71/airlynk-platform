@@ -1,13 +1,15 @@
 """
 AirLynk — Payment Models.
 """
-import uuid
+
 import enum
-from datetime import datetime
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+import uuid
+
+from sqlalchemy import Enum, ForeignKey, Numeric, String
+from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.shared.database.base import Base, TimestampMixin
+
 
 class PaymentStatus(enum.StrEnum):
     PENDING = "pending"
@@ -15,6 +17,7 @@ class PaymentStatus(enum.StrEnum):
     CAPTURED = "captured"
     FAILED = "failed"
     REFUNDED = "refunded"
+
 
 class PaymentIntent(Base, TimestampMixin):
     __tablename__ = "payment_intents"
@@ -35,6 +38,7 @@ class PaymentIntent(Base, TimestampMixin):
         index=True,
     )
     gateway_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
 
 class Transaction(Base, TimestampMixin):
     __tablename__ = "transactions"

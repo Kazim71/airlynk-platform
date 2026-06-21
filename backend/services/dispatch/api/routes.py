@@ -60,7 +60,9 @@ async def update_availability(
 async def submit_dispatch_decision(
     decision: DispatchDecision,
     background_tasks: BackgroundTasks,
-    current_user: dict[str, Any] = Depends(require_roles(Role.OPERATOR, Role.DRIVER, Role.PLATFORM_ADMIN)),
+    current_user: dict[str, Any] = Depends(
+        require_roles(Role.OPERATOR, Role.DRIVER, Role.PLATFORM_ADMIN)
+    ),
     service: DispatchService = Depends(get_dispatch_service),
 ) -> dict:  # type: ignore
     """Submit a driver's decision (accept/reject) for an assignment offer."""

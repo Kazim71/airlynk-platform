@@ -27,28 +27,18 @@ class FleetRepository:
     async def create_driver(self, driver: Driver) -> Driver:
         self.session.add(driver)
         await self.session.commit()
-        stmt = (
-            select(Driver)
-            .options(selectinload(Driver.vehicles))
-            .where(Driver.id == driver.id)
-        )
+        stmt = select(Driver).options(selectinload(Driver.vehicles)).where(Driver.id == driver.id)
         result = await self.session.execute(stmt)
         return result.scalar_one()
 
     async def get_driver_by_id(self, driver_id: uuid.UUID) -> Driver | None:
-        stmt = (
-            select(Driver)
-            .options(selectinload(Driver.vehicles))
-            .where(Driver.id == driver_id)
-        )
+        stmt = select(Driver).options(selectinload(Driver.vehicles)).where(Driver.id == driver_id)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def get_driver_by_user_id(self, user_id: uuid.UUID) -> Driver | None:
         stmt = (
-            select(Driver)
-            .options(selectinload(Driver.vehicles))
-            .where(Driver.user_id == user_id)
+            select(Driver).options(selectinload(Driver.vehicles)).where(Driver.user_id == user_id)
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()

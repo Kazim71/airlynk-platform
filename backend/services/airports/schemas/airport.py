@@ -1,9 +1,12 @@
 """
 AirLynk — Airport Schemas.
 """
+
 import uuid
 from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
+
 
 class AirportBase(BaseModel):
     code: str = Field(..., max_length=10)
@@ -15,8 +18,10 @@ class AirportBase(BaseModel):
     timezone: str = Field(default="Asia/Kolkata", max_length=50)
     is_active: bool = True
 
+
 class AirportCreate(AirportBase):
     pass
+
 
 class AirportResponse(AirportBase):
     id: uuid.UUID

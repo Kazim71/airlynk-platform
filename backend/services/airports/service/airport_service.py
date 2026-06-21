@@ -1,15 +1,18 @@
 """
 AirLynk — Airport Service.
 """
+
 import logging
-from typing import Sequence
+from collections.abc import Sequence
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.services.airports.repository.airport_repo import AirportRepository
 from backend.services.airports.models.airport import Airport
+from backend.services.airports.repository.airport_repo import AirportRepository
 
 logger = logging.getLogger(__name__)
+
 
 class AirportService:
     def __init__(self, session: AsyncSession):
@@ -28,6 +31,6 @@ class AirportService:
         if not airport:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Airport with code {code} not found."
+                detail=f"Airport with code {code} not found.",
             )
         return airport

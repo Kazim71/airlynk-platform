@@ -8,11 +8,10 @@ All data is Indian airport transfer data. No US/UK cities.
 """
 
 import asyncio
-import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import select, text
+from sqlalchemy import select
 
 from backend.services.airports.models.airport import Airport
 from backend.services.auth.models.user import Permission, Role, User
@@ -22,19 +21,72 @@ from backend.services.pricing.models.pricing import PricingRule
 from backend.shared.database.session import close_db, get_db_session, init_db
 from backend.shared.security.password import hash_password
 
-
 # ─── Indian Airports ──────────────────────────────────────────────
 AIRPORTS = [
-    {"code": "DEL", "name": "Indira Gandhi International Airport", "city": "Delhi", "lat": 28.5562, "lng": 77.1000},
-    {"code": "BOM", "name": "Chhatrapati Shivaji Maharaj International Airport", "city": "Mumbai", "lat": 19.0896, "lng": 72.8656},
-    {"code": "BLR", "name": "Kempegowda International Airport", "city": "Bengaluru", "lat": 13.1986, "lng": 77.7066},
-    {"code": "HYD", "name": "Rajiv Gandhi International Airport", "city": "Hyderabad", "lat": 17.2403, "lng": 78.4294},
-    {"code": "MAA", "name": "Chennai International Airport", "city": "Chennai", "lat": 12.9941, "lng": 80.1709},
+    {
+        "code": "DEL",
+        "name": "Indira Gandhi International Airport",
+        "city": "Delhi",
+        "lat": 28.5562,
+        "lng": 77.1000,
+    },
+    {
+        "code": "BOM",
+        "name": "Chhatrapati Shivaji Maharaj International Airport",
+        "city": "Mumbai",
+        "lat": 19.0896,
+        "lng": 72.8656,
+    },
+    {
+        "code": "BLR",
+        "name": "Kempegowda International Airport",
+        "city": "Bengaluru",
+        "lat": 13.1986,
+        "lng": 77.7066,
+    },
+    {
+        "code": "HYD",
+        "name": "Rajiv Gandhi International Airport",
+        "city": "Hyderabad",
+        "lat": 17.2403,
+        "lng": 78.4294,
+    },
+    {
+        "code": "MAA",
+        "name": "Chennai International Airport",
+        "city": "Chennai",
+        "lat": 12.9941,
+        "lng": 80.1709,
+    },
     {"code": "PNQ", "name": "Pune Airport", "city": "Pune", "lat": 18.5822, "lng": 73.9197},
-    {"code": "CCU", "name": "Netaji Subhas Chandra Bose International Airport", "city": "Kolkata", "lat": 22.6547, "lng": 88.4467},
-    {"code": "AMD", "name": "Sardar Vallabhbhai Patel International Airport", "city": "Ahmedabad", "lat": 23.0772, "lng": 72.6347},
-    {"code": "GOI", "name": "Goa International Airport (Manohar Parrikar)", "city": "Goa", "lat": 15.3808, "lng": 73.8314},
-    {"code": "JAI", "name": "Jaipur International Airport", "city": "Jaipur", "lat": 26.8242, "lng": 75.8122},
+    {
+        "code": "CCU",
+        "name": "Netaji Subhas Chandra Bose International Airport",
+        "city": "Kolkata",
+        "lat": 22.6547,
+        "lng": 88.4467,
+    },
+    {
+        "code": "AMD",
+        "name": "Sardar Vallabhbhai Patel International Airport",
+        "city": "Ahmedabad",
+        "lat": 23.0772,
+        "lng": 72.6347,
+    },
+    {
+        "code": "GOI",
+        "name": "Goa International Airport (Manohar Parrikar)",
+        "city": "Goa",
+        "lat": 15.3808,
+        "lng": 73.8314,
+    },
+    {
+        "code": "JAI",
+        "name": "Jaipur International Airport",
+        "city": "Jaipur",
+        "lat": 26.8242,
+        "lng": 75.8122,
+    },
 ]
 
 # ─── Indian Destinations (dropoff areas per city) ─────────────────
@@ -88,30 +140,74 @@ VEHICLE_TYPES = ["sedan", "suv", "luxury"]
 
 # ─── Indian Driver Names ──────────────────────────────────────────
 DRIVER_NAMES = [
-    "Rajesh Kumar", "Anil Sharma", "Vikram Singh", "Suresh Patel", "Rahul Verma",
-    "Deepak Gupta", "Manoj Tiwari", "Sanjay Yadav", "Ashok Joshi", "Prakash Nair",
-    "Ramesh Chauhan", "Arvind Desai", "Nitin Patil", "Sachin Kulkarni", "Ajay Reddy",
-    "Pradeep Menon", "Gaurav Mishra", "Rohit Kapoor", "Vivek Rathore", "Karan Malhotra",
+    "Rajesh Kumar",
+    "Anil Sharma",
+    "Vikram Singh",
+    "Suresh Patel",
+    "Rahul Verma",
+    "Deepak Gupta",
+    "Manoj Tiwari",
+    "Sanjay Yadav",
+    "Ashok Joshi",
+    "Prakash Nair",
+    "Ramesh Chauhan",
+    "Arvind Desai",
+    "Nitin Patil",
+    "Sachin Kulkarni",
+    "Ajay Reddy",
+    "Pradeep Menon",
+    "Gaurav Mishra",
+    "Rohit Kapoor",
+    "Vivek Rathore",
+    "Karan Malhotra",
 ]
 
 # ─── Vehicle Makes/Models ────────────────────────────────────────
 VEHICLES = [
-    ("Maruti", "Ciaz"), ("Maruti", "Ertiga"), ("Hyundai", "Verna"),
-    ("Hyundai", "Creta"), ("Tata", "Nexon"), ("Tata", "Harrier"),
-    ("Toyota", "Innova Crysta"), ("Toyota", "Fortuner"), ("Mahindra", "XUV700"),
-    ("Mahindra", "Thar"), ("Kia", "Seltos"), ("Kia", "Carens"),
-    ("Honda", "City"), ("Honda", "Amaze"), ("Skoda", "Slavia"),
-    ("MG", "Hector"), ("Tata", "Safari"), ("Hyundai", "Alcazar"),
-    ("Mercedes-Benz", "E-Class"), ("BMW", "5 Series"),
+    ("Maruti", "Ciaz"),
+    ("Maruti", "Ertiga"),
+    ("Hyundai", "Verna"),
+    ("Hyundai", "Creta"),
+    ("Tata", "Nexon"),
+    ("Tata", "Harrier"),
+    ("Toyota", "Innova Crysta"),
+    ("Toyota", "Fortuner"),
+    ("Mahindra", "XUV700"),
+    ("Mahindra", "Thar"),
+    ("Kia", "Seltos"),
+    ("Kia", "Carens"),
+    ("Honda", "City"),
+    ("Honda", "Amaze"),
+    ("Skoda", "Slavia"),
+    ("MG", "Hector"),
+    ("Tata", "Safari"),
+    ("Hyundai", "Alcazar"),
+    ("Mercedes-Benz", "E-Class"),
+    ("BMW", "5 Series"),
 ]
 
 # ─── Indian License Plates ───────────────────────────────────────
 PLATES = [
-    "DL01AB1234", "DL02CD5678", "MH01EF9012", "MH02GH3456",
-    "KA01IJ7890", "KA02KL1234", "TN01MN5678", "TN02OP9012",
-    "AP01QR3456", "AP02ST7890", "RJ01UV1234", "RJ02WX5678",
-    "GJ01YZ9012", "GJ02AB3456", "WB01CD7890", "WB02EF1234",
-    "GA01GH5678", "GA02IJ9012", "HR01KL3456", "UP01MN7890",
+    "DL01AB1234",
+    "DL02CD5678",
+    "MH01EF9012",
+    "MH02GH3456",
+    "KA01IJ7890",
+    "KA02KL1234",
+    "TN01MN5678",
+    "TN02OP9012",
+    "AP01QR3456",
+    "AP02ST7890",
+    "RJ01UV1234",
+    "RJ02WX5678",
+    "GJ01YZ9012",
+    "GJ02AB3456",
+    "WB01CD7890",
+    "WB02EF1234",
+    "GA01GH5678",
+    "GA02IJ9012",
+    "HR01KL3456",
+    "UP01MN7890",
 ]
 
 
@@ -119,16 +215,18 @@ async def seed():
     await init_db()
     async for session in get_db_session():
         try:
-            print("="*60)
+            print("=" * 60)
             print("  AirLynk Phase 2.5 — Comprehensive Seed")
-            print("="*60)
+            print("=" * 60)
 
             # ── 1. Create Roles & Permissions ─────────────────────
             print("\n[1/7] Creating roles and permissions...")
             role_names = ["customer", "driver", "operator", "security_admin", "platform_admin"]
             roles = {}
             for name in role_names:
-                existing = (await session.execute(select(Role).where(Role.name == name))).scalar_one_or_none()
+                existing = (
+                    await session.execute(select(Role).where(Role.name == name))
+                ).scalar_one_or_none()
                 if existing:
                     roles[name] = existing
                     print(f"  Role '{name}' already exists.")
@@ -141,12 +239,18 @@ async def seed():
 
             # Basic permissions
             perm_names = [
-                "booking:create", "booking:read", "booking:cancel",
-                "fleet:manage", "dispatch:manage", "pricing:manage",
+                "booking:create",
+                "booking:read",
+                "booking:cancel",
+                "fleet:manage",
+                "dispatch:manage",
+                "pricing:manage",
                 "admin:all",
             ]
             for pname in perm_names:
-                existing = (await session.execute(select(Permission).where(Permission.name == pname))).scalar_one_or_none()
+                existing = (
+                    await session.execute(select(Permission).where(Permission.name == pname))
+                ).scalar_one_or_none()
                 if not existing:
                     perm = Permission(name=pname)
                     session.add(perm)
@@ -163,10 +267,12 @@ async def seed():
             ]
             # Add 20 driver users
             for i in range(20):
-                user_defs.append((f"driver{i+1}@airlynk.in", f"Driver{i+1}#2026!!", "driver"))
+                user_defs.append((f"driver{i + 1}@airlynk.in", f"Driver{i + 1}#2026!!", "driver"))
 
             for email, password, role_name in user_defs:
-                existing = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()
+                existing = (
+                    await session.execute(select(User).where(User.email == email))
+                ).scalar_one_or_none()
                 if existing:
                     test_users[email] = existing
                     print(f"  User '{email}' already exists.")
@@ -186,14 +292,19 @@ async def seed():
             print("\n[3/7] Seeding 10 Indian airports...")
             airport_objs = {}
             for ap in AIRPORTS:
-                existing = (await session.execute(select(Airport).where(Airport.code == ap["code"]))).scalar_one_or_none()
+                existing = (
+                    await session.execute(select(Airport).where(Airport.code == ap["code"]))
+                ).scalar_one_or_none()
                 if existing:
                     airport_objs[ap["code"]] = existing
                     print(f"  Airport {ap['code']} already exists.")
                 else:
                     airport = Airport(
-                        code=ap["code"], name=ap["name"], city=ap["city"],
-                        latitude=ap["lat"], longitude=ap["lng"],
+                        code=ap["code"],
+                        name=ap["name"],
+                        city=ap["city"],
+                        latitude=ap["lat"],
+                        longitude=ap["lng"],
                         timezone="Asia/Kolkata",
                     )
                     session.add(airport)
@@ -204,16 +315,31 @@ async def seed():
             # ── 4. Seed Pricing Rules ─────────────────────────────
             print("\n[4/7] Seeding pricing rules (10 cities × 3 vehicle types)...")
             pricing_configs = {
-                "sedan":  {"base": 150, "per_km": 14, "per_min": 2, "min_fare": 300, "airport": 100},
-                "suv":    {"base": 250, "per_km": 18, "per_min": 3, "min_fare": 450, "airport": 150},
-                "luxury": {"base": 500, "per_km": 28, "per_min": 5, "min_fare": 800, "airport": 250},
+                "sedan": {
+                    "base": 150,
+                    "per_km": 14,
+                    "per_min": 2,
+                    "min_fare": 300,
+                    "airport": 100,
+                },
+                "suv": {"base": 250, "per_km": 18, "per_min": 3, "min_fare": 450, "airport": 150},
+                "luxury": {
+                    "base": 500,
+                    "per_km": 28,
+                    "per_min": 5,
+                    "min_fare": 800,
+                    "airport": 250,
+                },
             }
             for ap in AIRPORTS:
                 for vtype, config in pricing_configs.items():
-                    existing = (await session.execute(
-                        select(PricingRule)
-                        .where(PricingRule.city == ap["city"], PricingRule.vehicle_type == vtype)
-                    )).scalar_one_or_none()
+                    existing = (
+                        await session.execute(
+                            select(PricingRule).where(
+                                PricingRule.city == ap["city"], PricingRule.vehicle_type == vtype
+                            )
+                        )
+                    ).scalar_one_or_none()
                     if existing:
                         continue
                     rule = PricingRule(
@@ -231,17 +357,19 @@ async def seed():
                     )
                     session.add(rule)
             await session.flush()
-            print(f"  Pricing rules created for {len(AIRPORTS)} cities × {len(pricing_configs)} vehicle types.")
+            print(
+                f"  Pricing rules created for {len(AIRPORTS)} cities × {len(pricing_configs)} vehicle types."
+            )
 
             # ── 5. Seed 20 Drivers + 20 Vehicles ─────────────────
             print("\n[5/7] Seeding 20 drivers and 20 vehicles...")
             driver_objs = []
             for i in range(20):
-                email = f"driver{i+1}@airlynk.in"
+                email = f"driver{i + 1}@airlynk.in"
                 user = test_users[email]
-                existing = (await session.execute(
-                    select(Driver).where(Driver.user_id == user.id)
-                )).scalar_one_or_none()
+                existing = (
+                    await session.execute(select(Driver).where(Driver.user_id == user.id))
+                ).scalar_one_or_none()
                 if existing:
                     driver_objs.append(existing)
                     print(f"  Driver '{DRIVER_NAMES[i]}' already exists.")
@@ -249,7 +377,7 @@ async def seed():
 
                 driver = Driver(
                     user_id=user.id,
-                    license_number=f"DL-{2024+i}-{100000+i:06d}",
+                    license_number=f"DL-{2024 + i}-{100000 + i:06d}",
                     is_active=True,
                     is_available=(i < 10),  # First 10 drivers are available
                 )
@@ -277,22 +405,43 @@ async def seed():
             for i in range(50):
                 ap_data = AIRPORTS[i % len(AIRPORTS)]
                 city = ap_data["city"]
-                dests = DESTINATIONS.get(city, [{"name": "City Center", "lat": ap_data["lat"] + 0.05, "lng": ap_data["lng"] + 0.05}])
+                dests = DESTINATIONS.get(
+                    city,
+                    [
+                        {
+                            "name": "City Center",
+                            "lat": ap_data["lat"] + 0.05,
+                            "lng": ap_data["lng"] + 0.05,
+                        }
+                    ],
+                )
                 dest = dests[i % len(dests)]
 
                 # Vary statuses
                 statuses = [
-                    BookingStatus.CREATED, BookingStatus.CONFIRMED,
-                    BookingStatus.PAYMENT_AUTHORIZED, BookingStatus.DISPATCHING,
-                    BookingStatus.DRIVER_ASSIGNED, BookingStatus.COMPLETED,
-                    BookingStatus.COMPLETED, BookingStatus.COMPLETED,
-                    BookingStatus.CANCELLED, BookingStatus.IN_PROGRESS,
+                    BookingStatus.CREATED,
+                    BookingStatus.CONFIRMED,
+                    BookingStatus.PAYMENT_AUTHORIZED,
+                    BookingStatus.DISPATCHING,
+                    BookingStatus.DRIVER_ASSIGNED,
+                    BookingStatus.COMPLETED,
+                    BookingStatus.COMPLETED,
+                    BookingStatus.COMPLETED,
+                    BookingStatus.CANCELLED,
+                    BookingStatus.IN_PROGRESS,
                 ]
                 status = statuses[i % len(statuses)]
 
-                assigned_driver = driver_objs[i % 20] if status in [
-                    BookingStatus.DRIVER_ASSIGNED, BookingStatus.IN_PROGRESS, BookingStatus.COMPLETED
-                ] else None
+                assigned_driver = (
+                    driver_objs[i % 20]
+                    if status
+                    in [
+                        BookingStatus.DRIVER_ASSIGNED,
+                        BookingStatus.IN_PROGRESS,
+                        BookingStatus.COMPLETED,
+                    ]
+                    else None
+                )
 
                 # Get vehicle for assigned driver
                 vehicle_id = None
@@ -311,7 +460,7 @@ async def seed():
                     dropoff_location=dest["name"],
                     dropoff_lat=dest["lat"],
                     dropoff_lng=dest["lng"],
-                    scheduled_time=datetime.now(UTC) + timedelta(hours=i+1),
+                    scheduled_time=datetime.now(UTC) + timedelta(hours=i + 1),
                     passenger_count=(i % 4) + 1,
                     booking_status=status,
                     estimated_price=float(Decimal(str(300 + (i * 47) % 2000))),
@@ -326,17 +475,17 @@ async def seed():
 
             # ── 7. Summary ────────────────────────────────────────
             await session.commit()
-            print("\n" + "="*60)
+            print("\n" + "=" * 60)
             print("  ✅ SEED COMPLETE")
-            print("="*60)
+            print("=" * 60)
             print(f"  Roles:          {len(role_names)}")
             print(f"  Users:          {len(test_users)}")
             print(f"  Airports:       {len(AIRPORTS)}")
             print(f"  Pricing Rules:  {len(AIRPORTS) * len(pricing_configs)}")
-            print(f"  Drivers:        20")
-            print(f"  Vehicles:       20")
+            print("  Drivers:        20")
+            print("  Vehicles:       20")
             print(f"  Bookings:       {booking_count}")
-            print("="*60)
+            print("=" * 60)
             print("\n  Test Credentials:")
             print("  ──────────────────")
             print("  Operator:  operator@airlynk.in / Operator#2026!!")
@@ -348,6 +497,7 @@ async def seed():
         except Exception as e:
             print(f"\n❌ SEED FAILED: {e}")
             import traceback
+
             traceback.print_exc()
             await session.rollback()
             raise

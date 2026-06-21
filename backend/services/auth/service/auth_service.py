@@ -14,7 +14,7 @@ from fastapi import HTTPException
 from redis.asyncio import Redis
 
 from backend.services.auth.models.user import User
-from backend.services.auth.repository.auth_repository import AuthRepository  # noqa: TC001
+from backend.services.auth.repository.auth_repository import AuthRepository
 from backend.services.auth.schemas.auth import (
     RefreshTokenRequest,
     TokenResponse,
@@ -130,7 +130,7 @@ class AuthService:
         try:
             decoded = decode_token(payload.refresh_token)
         except AuthenticationError:
-            raise AuthenticationError(message="Invalid refresh token")  # noqa: B904
+            raise AuthenticationError(message="Invalid refresh token")
 
         if decoded.get("type") != "refresh":
             raise AuthenticationError(message="Invalid token type")
@@ -182,7 +182,7 @@ class AuthService:
                 await self.redis.delete(f"refresh_token:{jti}")
 
             # Note: The frontend is expected to discard the access token.
-            # If aggressive revocation is needed, we could add the access token JTI to a Redis blocklist here.  # noqa: E501
+            # If aggressive revocation is needed, we could add the access token JTI to a Redis blocklist here.
         except AuthenticationError:
             # Ignore errors during logout (e.g. token already expired)
             pass

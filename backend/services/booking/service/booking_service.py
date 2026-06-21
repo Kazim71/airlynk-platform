@@ -8,7 +8,6 @@ Integrates with the Pricing Engine for fare calculation.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -19,9 +18,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.services.booking.events.publishers import BookingEventPublisher
 from backend.services.booking.models.booking import Booking, BookingStatus, TripStatus
+from backend.services.fleet.repository.fleet_repository import FleetRepository
 from backend.services.pricing.schemas.pricing import FareEstimateRequest
 from backend.services.pricing.service.pricing_service import PricingService
-from backend.services.fleet.repository.fleet_repository import FleetRepository
 from backend.shared.exceptions.handlers import ConflictError, NotFoundError
 from backend.shared.observability.metrics import BOOKINGS_COMPLETED_TOTAL, BOOKINGS_CREATED_TOTAL
 
@@ -57,7 +56,9 @@ class BookingService:
 
         await self.publisher.publish_booking_created(booking.id, customer_id, correlation_id)
         BOOKINGS_CREATED_TOTAL.inc()
-        logger.info(f"Booking {booking.id} created by customer {customer_id} | fare=₹{estimated_price}")
+        logger.info(
+            f"Booking {booking.id} created by customer {customer_id} | fare=₹{estimated_price}"
+        )
         return booking
 
     async def _calculate_fare(self, data: BookingCreate) -> float:
@@ -68,18 +69,25 @@ class BookingService:
         """
         try:
             # Extract city from pickup_location (format: "City - Airport Name")
-            city = data.pickup_location.split(" - ")[0].strip() if " - " in data.pickup_location else data.pickup_location.strip()
+            city = (
+                data.pickup_location.split(" - ")[0].strip()
+                if " - " in data.pickup_location
+                else data.pickup_location.strip()
+            )
 
             # Use Haversine-based distance estimate (same as geo service)
             from backend.services.geo.schemas.geo import RouteRequest
             from backend.services.geo.service.geo_service import GeoService
+
             geo_svc = GeoService()
-            geo_result = await geo_svc.estimate_route(RouteRequest(
-                pickup_lat=data.pickup_lat,
-                pickup_lng=data.pickup_lng,
-                dropoff_lat=data.dropoff_lat,
-                dropoff_lng=data.dropoff_lng,
-            ))
+            geo_result = await geo_svc.estimate_route(
+                RouteRequest(
+                    pickup_lat=data.pickup_lat,
+                    pickup_lng=data.pickup_lng,
+                    dropoff_lat=data.dropoff_lat,
+                    dropoff_lng=data.dropoff_lng,
+                )
+            )
             distance_km = Decimal(str(geo_result.distance_km))
             duration_mins = geo_result.duration_minutes
 
@@ -125,7 +133,12 @@ class BookingService:
                 raise NotFoundError("Booking not found")
 
             # State Machine validation
-            if booking.booking_status not in [BookingStatus.CREATED, BookingStatus.CONFIRMED, BookingStatus.PAYMENT_AUTHORIZED, BookingStatus.DISPATCHING]:
+            if booking.booking_status not in [
+                BookingStatus.CREATED,
+                BookingStatus.CONFIRMED,
+                BookingStatus.PAYMENT_AUTHORIZED,
+                BookingStatus.DISPATCHING,
+            ]:
                 raise ConflictError(
                     f"Cannot assign driver to booking in state: {booking.booking_status}"
                 )
@@ -235,15 +248,23 @@ class BookingService:
         booking = await self.repo.get_booking_by_id(booking_id)
         if not booking:
             raise NotFoundError("Booking not found")
-        
+
         if booking.booking_status in [BookingStatus.CREATED, BookingStatus.CONFIRMED]:
-            booking = await self.repo.update_booking_status(booking, BookingStatus.PAYMENT_AUTHORIZED, booking.customer_id)
-            await self.redis.setex(f"active_booking:{booking.id}", 3600, str(booking.booking_status))
+            booking = await self.repo.update_booking_status(
+                booking, BookingStatus.PAYMENT_AUTHORIZED, booking.customer_id
+            )
+            await self.redis.setex(
+                f"active_booking:{booking.id}", 3600, str(booking.booking_status)
+            )
             logger.info(f"Payment authorized for booking {booking.id}")
-            
+
             # Auto-transition to dispatching
-            booking = await self.repo.update_booking_status(booking, BookingStatus.DISPATCHING, booking.customer_id)
-            await self.redis.setex(f"active_booking:{booking.id}", 3600, str(booking.booking_status))
+            booking = await self.repo.update_booking_status(
+                booking, BookingStatus.DISPATCHING, booking.customer_id
+            )
+            await self.redis.setex(
+                f"active_booking:{booking.id}", 3600, str(booking.booking_status)
+            )
         return booking
 
     async def get_booking(self, booking_id: uuid.UUID) -> Booking:

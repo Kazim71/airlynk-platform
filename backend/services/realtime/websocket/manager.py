@@ -90,7 +90,6 @@ class ConnectionManager:
                     if isinstance(data, bytes):
                         data = data.decode("utf-8")
 
-
                     if channel in self.active_connections:
                         # Send to all websockets in this channel
                         disconnected = []

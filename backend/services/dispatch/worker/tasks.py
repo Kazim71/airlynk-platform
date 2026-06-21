@@ -55,6 +55,6 @@ def handle_attempt_timeout(attempt_id_str: str) -> None:
     loop = asyncio.get_event_loop()
     if loop.is_running():
         # Fallback if somehow running in event loop thread
-        asyncio.ensure_future(_process_dispatch_timeout(attempt_id))
+        _task = asyncio.ensure_future(_process_dispatch_timeout(attempt_id))
     else:
         loop.run_until_complete(_process_dispatch_timeout(attempt_id))

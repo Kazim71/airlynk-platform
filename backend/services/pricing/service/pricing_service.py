@@ -55,9 +55,15 @@ class PricingService:
         effective_surge = max(rule.surge_multiplier, surge)
 
         base = rule.base_fare.quantize(Decimal("0.01"))
-        distance_fare = (rule.per_km_rate * request.estimated_distance_km).quantize(Decimal("0.01"))
-        time_fare = (rule.per_minute_rate * Decimal(request.estimated_duration_minutes)).quantize(Decimal("0.01"))
-        airport_fee = (rule.airport_fee if request.is_airport else Decimal("0.00")).quantize(Decimal("0.01"))
+        distance_fare = (rule.per_km_rate * request.estimated_distance_km).quantize(
+            Decimal("0.01")
+        )
+        time_fare = (rule.per_minute_rate * Decimal(request.estimated_duration_minutes)).quantize(
+            Decimal("0.01")
+        )
+        airport_fee = (rule.airport_fee if request.is_airport else Decimal("0.00")).quantize(
+            Decimal("0.01")
+        )
 
         subtotal = (base + distance_fare + time_fare).quantize(Decimal("0.01"))
         if subtotal < rule.minimum_fare:

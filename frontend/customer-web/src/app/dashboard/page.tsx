@@ -17,7 +17,7 @@ export default function DashboardOverview() {
   if (isLoading) return <div>Loading...</div>;
 
   const bookings = data || [];
-  const upcomingBookings = bookings.filter((b: any) => ['pending', 'confirmed', 'in_progress'].includes(b.status));
+  const upcomingBookings = bookings.filter((b: any) => ['created', 'confirmed', 'payment_authorized', 'dispatching', 'driver_assigned', 'in_progress'].includes(b.booking_status));
 
   return (
     <div>
@@ -61,9 +61,9 @@ export default function DashboardOverview() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize
-                      ${booking.status === 'confirmed' ? 'bg-blue-100 text-blue-700' : 
-                        booking.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>
-                      {booking.status.replace('_', ' ')}
+                      ${booking.booking_status === 'confirmed' ? 'bg-blue-100 text-blue-700' : 
+                        booking.booking_status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>
+                      {booking.booking_status.replace('_', ' ')}
                     </span>
                     <span className="text-gray-500 text-sm font-medium">#{booking.id.substring(0, 8)}</span>
                   </div>
@@ -75,7 +75,7 @@ export default function DashboardOverview() {
                 </div>
               </div>
               <div className="flex gap-3 w-full md:w-auto">
-                {booking.status === 'in_progress' && (
+                {booking.booking_status === 'in_progress' && (
                   <Link href={`/tracking/${booking.id}`} className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-medium transition-colors text-center">
                     Live Tracking
                   </Link>

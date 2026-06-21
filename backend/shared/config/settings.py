@@ -54,7 +54,7 @@ class Settings(BaseSettings):
 
     # --- PostgreSQL ------------------------------------------------------------
     database_url: str = Field(
-        default="postgresql+asyncpg://airlynk:airlynk_dev_password@localhost:5432/airlynk",
+        default="postgresql+asyncpg://airlynk:airlynk_secure_dev@localhost:5432/airlynk",
     )
     database_pool_size: int = Field(default=10, ge=1)
     database_max_overflow: int = Field(default=20, ge=0)

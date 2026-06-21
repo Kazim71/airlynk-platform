@@ -27,7 +27,7 @@ def mock_redis() -> AsyncMock:
 
 @pytest.fixture
 def booking_service(mock_repo: AsyncMock, mock_redis: AsyncMock) -> BookingService:
-    service = BookingService(mock_repo, mock_redis)
+    service = BookingService(mock_repo, mock_redis, db_session=AsyncMock())
     service.publisher = AsyncMock()
     return service
 
