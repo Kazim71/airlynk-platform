@@ -49,8 +49,9 @@ class AuthService:
         if existing_user:
             raise HTTPException(status_code=409, detail="User already exists")
 
-        # By default, assign 'customer' role
-        role = await self.repo.get_role_by_name("customer")
+        # Use requested role, default to 'customer'
+        requested_role = (payload.role or "customer").lower()
+        role = await self.repo.get_role_by_name(requested_role)
         role_id = role.id if role else None
 
         user = User(

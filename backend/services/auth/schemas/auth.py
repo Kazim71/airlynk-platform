@@ -17,6 +17,7 @@ class UserCreate(BaseModel):
 
     email: EmailStr
     password: str = Field(min_length=12, description="Password must be at least 12 characters")
+    role: str = Field(default="customer", description="User role: customer, driver, operator")
 
 
 class UserLogin(BaseModel):
