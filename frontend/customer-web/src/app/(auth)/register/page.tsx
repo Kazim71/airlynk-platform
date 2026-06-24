@@ -33,14 +33,9 @@ export default function RegisterPage() {
       });
 
       // 2. Login User automatically
-      const data = new URLSearchParams();
-      data.append('username', email);
-      data.append('password', password);
-
-      const response = await api.post('/auth/login', data, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+      const response = await api.post('/auth/login', {
+        email: email,
+        password: password,
       });
 
       const { access_token } = response.data;

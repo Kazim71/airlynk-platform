@@ -227,6 +227,38 @@ services:
     restart: unless-stopped
 
 # -----------------------------------------------------------------
+  # Customer Web
+  # -----------------------------------------------------------------
+  customer-web:
+    build:
+      context: ./frontend/customer-web
+    container_name: airlynk-customer-web
+    ports:
+      - "4000:4000"
+    networks:
+      - airlynk-network
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # -----------------------------------------------------------------
+  # Operator Dashboard
+  # -----------------------------------------------------------------
+  operator-dashboard:
+    build:
+      context: ./frontend/operator-dashboard
+    container_name: airlynk-operator-dashboard
+    ports:
+      - "3000:3000"
+    networks:
+      - airlynk-network
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+# -----------------------------------------------------------------
 # Volumes  (DOCKER_STRATEGY.md §6)
 # -----------------------------------------------------------------
 volumes:

@@ -75,10 +75,14 @@ export default function BookingPage() {
 
       // 2. Get Pricing Estimate
       const pricingRes = await api.post('/pricing/estimate', {
+        pickup_lat: pickup.latitude,
+        pickup_lng: pickup.longitude,
+        dropoff_lat: dropoff.lat,
+        dropoff_lng: dropoff.lng,
         city: pickup.city,
         vehicle_type: vehicleClass,
         estimated_distance_km: geoData.distance_km,
-        estimated_duration_minutes: geoData.duration_mins,
+        estimated_duration_minutes: geoData.duration_minutes,
         is_airport: true
       });
 
