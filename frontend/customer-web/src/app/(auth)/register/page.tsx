@@ -23,13 +23,13 @@ export default function RegisterPage() {
     const password = formData.get('password') as string;
     const fullName = formData.get('full_name') as string;
 
+    const role = formData.get('role') as string || 'customer';
+
     try {
-      // 1. Register User
       await api.post('/auth/register', {
         email,
         password,
-        full_name: fullName,
-        role: 'customer' // AirLynk backend auth model
+        role
       });
 
       // 2. Login User automatically
@@ -47,10 +47,15 @@ export default function RegisterPage() {
         },
       });
 
+      if (!['customer', 'driver'].includes(userResponse.data.role)) {
+        throw new Error('Access denied. This portal is for customers and drivers only.');
+      }
+
       login(userResponse.data, access_token);
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create account. Please try again.');
+      const message = err.response?.data?.detail || err.message || 'Failed to create account. Please try again.';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -96,7 +101,7 @@ export default function RegisterPage() {
             />
           </div>
           
-          <div className="mb-8">
+          <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
             <input 
               name="password"
@@ -105,6 +110,17 @@ export default function RegisterPage() {
               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
               placeholder="••••••••"
             />
+          </div>
+
+          <div className="mb-8">
+            <label className="block text-sm font-medium text-gray-700 mb-2">I am a</label>
+            <select 
+              name="role"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
+            >
+              <option value="customer">Customer</option>
+              <option value="driver">Driver</option>
+            </select>
           </div>
           
           <button 

@@ -16,10 +16,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setMounted(true);
     if (!isAuthenticated) {
       router.push('/login');
+    } else if (user?.role === 'operator') {
+      logout();
+      router.push('/login');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, user, router, logout]);
 
-  if (!mounted || !isAuthenticated) {
+  if (!mounted || !isAuthenticated || user?.role === 'operator') {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;
   }
 

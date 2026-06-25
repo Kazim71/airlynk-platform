@@ -22,7 +22,7 @@ from backend.services.auth.schemas.auth import (
 from backend.services.auth.service.auth_service import AuthService
 from backend.shared.cache.redis_client import get_redis
 from backend.shared.database.session import get_db_session
-from backend.shared.middleware.rbac import get_current_user
+from backend.shared.middleware.rbac import Role, get_current_user, require_roles
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -90,3 +90,13 @@ async def get_me(
         role=user.role.name if user.role else None,
         created_at=user.created_at,
     )
+
+
+@router.get("/users", response_model=list[UserResponse])
+async def get_users(
+    role: str | None = None,
+    _: dict[str, Any] = Depends(require_roles(Role.OPERATOR)),
+    service: AuthService = Depends(get_auth_service),
+) -> list[UserResponse]:
+    """Get all users, optionally filtered by role (Operator only)."""
+    return await service.get_users_by_role(role)

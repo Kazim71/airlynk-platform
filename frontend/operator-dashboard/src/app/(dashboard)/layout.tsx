@@ -1,17 +1,30 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
-import { Activity, Car, FileText, Map, Settings, LogOut, Bell, DollarSign } from "lucide-react";
+import { Activity, Car, FileText, Map, Settings, LogOut, Bell, DollarSign, Users } from "lucide-react";
 
 import { NotificationFeed } from "@/components/notifications/NotificationFeed";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user, token, logout } = useAuthStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    if (!token || user?.role !== 'operator') {
+      router.push("/login");
+    }
+  }, [token, user, router]);
+
+  if (!mounted || !token || user?.role !== 'operator') {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;
+  }
 
   const handleLogout = () => {
     logout();
@@ -23,6 +36,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: "/dispatch", label: "Dispatch", icon: Car },
     { href: "/bookings", label: "Bookings", icon: FileText },
     { href: "/pricing", label: "Pricing", icon: DollarSign },
+    { href: "/users", label: "Users", icon: Users },
   ];
 
   return (

@@ -1,0 +1,23 @@
+[
+  {
+    "role": "operator",
+    "email": "operator_test@example.com",
+    "password": "Test@123456",
+    "status": "Active",
+    "notes": "Main operator account for managing platform"
+  },
+  {
+    "role": "customer",
+    "email": "customer_test@example.com",
+    "password": "Test@123456",
+    "status": "Active",
+    "notes": "Main customer account for booking rides"
+  },
+  {
+    "role": "driver",
+    "email": "driver_test@example.com",
+    "password": "Test@123456",
+    "status": "Active",
+    "notes": "Main driver account for accepting rides"
+  }
+]

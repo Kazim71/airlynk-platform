@@ -41,12 +41,17 @@ export default function LoginPage() {
             Authorization: `Bearer ${data.access_token}`,
           },
         });
+        
+        if (meRes.data.role !== 'operator') {
+          throw new Error('Access denied. This portal is for operators only.');
+        }
+
         setAuth(data.access_token, meRes.data);
         router.push("/");
       } catch (err: any) {
         console.error("Login profile fetch error:", err);
         const detail = err.response?.data?.detail || err.response?.data?.message || err.message;
-        setError(`Failed to fetch user profile: ${detail} (Status: ${err.response?.status || 'Unknown'})`);
+        setError(detail || "Failed to fetch user profile");
       }
     },
     onError: () => {

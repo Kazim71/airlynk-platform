@@ -51,6 +51,11 @@ class AuthService:
 
         # Use requested role, default to 'customer'
         requested_role = (payload.role or "customer").lower()
+        
+        # Restrict public registration to customers and drivers
+        if requested_role not in ("customer", "driver"):
+            raise HTTPException(status_code=403, detail=f"Registration for role '{requested_role}' is not allowed via public API")
+            
         role = await self.repo.get_role_by_name(requested_role)
         role_id = role.id if role else None
 
@@ -187,3 +192,17 @@ class AuthService:
         except AuthenticationError:
             # Ignore errors during logout (e.g. token already expired)
             pass
+
+    async def get_users_by_role(self, role_name: str | None = None) -> list[UserResponse]:
+        """Get all users, optionally filtered by role."""
+        users = await self.repo.get_users(role_name)
+        return [
+            UserResponse(
+                id=u.id,
+                email=u.email,
+                is_active=u.is_active,
+                role=u.role.name if u.role else None,
+                created_at=u.created_at,
+            )
+            for u in users
+        ]

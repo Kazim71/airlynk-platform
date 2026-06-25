@@ -16,8 +16,9 @@ class UserCreate(BaseModel):
     """Payload for registering a new user."""
 
     email: EmailStr
-    password: str = Field(min_length=12, description="Password must be at least 12 characters")
+    password: str = Field(min_length=8, description="Password must be at least 8 characters")
     role: str = Field(default="customer", description="User role: customer, driver, operator")
+    full_name: str | None = None
 
 
 class UserLogin(BaseModel):

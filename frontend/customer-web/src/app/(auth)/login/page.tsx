@@ -37,10 +37,15 @@ export default function LoginPage() {
         },
       });
 
+      if (!['customer', 'driver'].includes(userResponse.data.role)) {
+        throw new Error('Access denied. This portal is for customers and drivers only.');
+      }
+
       login(userResponse.data, access_token);
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to login. Please try again.');
+      const message = err.response?.data?.detail || err.message || 'Failed to login. Please try again.';
+      setError(message);
     } finally {
       setLoading(false);
     }

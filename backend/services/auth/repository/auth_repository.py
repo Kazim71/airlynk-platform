@@ -50,3 +50,11 @@ class AuthRepository:
         stmt = select(Role).where(Role.name == name)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def get_users(self, role_name: str | None = None) -> list[User]:
+        """Fetch a list of users, optionally filtered by role."""
+        stmt = select(User).options(selectinload(User.role))
+        if role_name:
+            stmt = stmt.join(Role).where(Role.name == role_name)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
